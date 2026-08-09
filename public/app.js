@@ -21,9 +21,10 @@ const elements = {
   visualEditor: $("#visualEditor"),
   editorLoading: $("#editorLoading"),
   dropZone: $("#dropZone"),
-  settingsDialog: $("#settingsDialog"),
+  publishDialog: $("#publishDialog"),
   successDialog: $("#successDialog"),
   publishButton: $("#publishButton"),
+  confirmPublishButton: $("#confirmPublishButton"),
   ttlSelect: $("#ttlSelect"),
   slugInput: $("#slugInput"),
   tocPanel: $("#tocPanel"),
@@ -335,8 +336,8 @@ async function publish() {
     return;
   }
 
-  elements.publishButton.disabled = true;
-  elements.publishButton.textContent = t("publishing");
+  elements.confirmPublishButton.disabled = true;
+  elements.confirmPublishButton.textContent = t("publishing");
   try {
     const response = await fetch("/api/docs", {
       method: "POST",
@@ -354,13 +355,28 @@ async function publish() {
     saveDraft();
     $("#shareUrlInput").value = data.url;
     $("#openDocumentLink").href = data.url;
+    elements.publishDialog.close();
     elements.successDialog.showModal();
   } catch (error) {
     showToast(error.message || t("publishFailed"));
   } finally {
-    elements.publishButton.disabled = false;
-    elements.publishButton.textContent = t("publish");
+    elements.confirmPublishButton.disabled = false;
+    elements.confirmPublishButton.textContent = t("confirmPublish");
   }
+}
+
+function openPublishDialog() {
+  const content = normalizeMarkdown(
+    currentMode === "visual" && crepe ? crepe.getMarkdown() : elements.markdownInput.value,
+  );
+  currentMarkdown = content;
+  if (!content.trim()) {
+    focusCurrentEditor();
+    showToast(t("writeSomething"));
+    return;
+  }
+  saveDraft();
+  elements.publishDialog.showModal();
 }
 
 function formatDate(timestamp) {
@@ -692,8 +708,12 @@ async function copyText(text) {
 document.querySelectorAll(".mode-button").forEach((button) => {
   button.addEventListener("click", () => setMode(button.dataset.mode));
 });
-$("#settingsButton").addEventListener("click", () => elements.settingsDialog.showModal());
-elements.publishButton.addEventListener("click", publish);
+elements.publishButton.addEventListener("click", openPublishDialog);
+$("#closePublishDialog").addEventListener("click", () => elements.publishDialog.close());
+$("#publishForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  publish();
+});
 $("#copyLinkButton").addEventListener("click", () => copyText(location.href));
 $("#copySuccessLink").addEventListener("click", () => copyText($("#shareUrlInput").value));
 $("#continueEditingButton").addEventListener("click", () => elements.successDialog.close());

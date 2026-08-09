@@ -23,7 +23,6 @@
           <button class="mode-button is-active" data-mode="visual" type="button">编辑</button>
           <button class="mode-button" data-mode="source" type="button">源码</button>
         </div>
-        <button class="quiet-button" id="settingsButton" type="button">分享设置</button>
         <button class="publish-button" id="publishButton" type="button">发布</button>
       </div>
       <div class="topbar-actions reader-only" hidden>
@@ -112,14 +111,15 @@
       </section>
     </main>
 
-    <dialog class="settings-dialog" id="settingsDialog">
-      <form method="dialog" id="settingsForm">
+    <dialog class="publish-dialog" id="publishDialog">
+      <form id="publishForm">
         <div class="dialog-head">
           <div>
-            <p class="eyebrow">Share settings</p>
-            <h2>分享设置</h2>
+            <p class="eyebrow">发布设置</p>
+            <h2>确认发布</h2>
+            <p class="dialog-description">确认有效期和短链后发布文档。</p>
           </div>
-          <button class="icon-button" value="cancel" aria-label="关闭" type="submit">×</button>
+          <button class="icon-button" id="closePublishDialog" aria-label="关闭" type="button">×</button>
         </div>
 
         <label class="field-label" for="ttlSelect">链接有效期</label>
@@ -139,7 +139,7 @@
         </div>
         <p class="field-help">留空会生成 8 位随机短链。仅限小写字母、数字和连字符。</p>
 
-        <button class="dialog-done" value="default" type="submit">完成</button>
+        <button class="confirm-publish-button" id="confirmPublishButton" type="submit">确认发布</button>
       </form>
     </dialog>
 

@@ -300,7 +300,7 @@ main { min-height: 100vh; }
   min-height: inherit;
 }
 
-/* Keep Crepe's slash menu compact and aligned with Duanjian's quiet UI. */
+/* Keep Crepe's slash menu compact and aligned with Notelet's quiet UI. */
 .visual-editor .milkdown .milkdown-slash-menu {
   width: 256px;
   max-width: calc(100vw - 32px);

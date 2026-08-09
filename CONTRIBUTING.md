@@ -1,6 +1,6 @@
 # Contributing / 参与贡献
 
-Thank you for helping improve Duanjian. Bug reports, documentation fixes, translations, and focused code changes are welcome.
+Thank you for helping improve Notelet. Bug reports, documentation fixes, translations, and focused code changes are welcome.
 
 感谢你帮助改进短笺。欢迎提交缺陷报告、文档修正、翻译和范围明确的代码改动。
 

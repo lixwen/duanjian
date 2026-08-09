@@ -1,8 +1,8 @@
-# 短笺 / Duanjian
+# 短笺 / Notelet
 
 [English](README.md) · [在线站点](https://md.youcaidi.link) · [参与贡献](CONTRIBUTING.md)
 
-短笺是一个受 Telegra.ph 启发的极简 Markdown 文档与 Codex 会话分享服务。项目完全运行在 Cloudflare Workers、KV 和 R2 上，界面支持简体中文与英文。
+短笺（英文名 Notelet）是一个受 Telegra.ph 启发的极简 Markdown 文档与 Codex 会话分享服务。Notelet 在英文中意为“小笺、简短便笺”，与中文名称直接对应。项目完全运行在 Cloudflare Workers、KV 和 R2 上，界面支持简体中文与英文。
 
 ## 功能
 

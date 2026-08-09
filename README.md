@@ -1,8 +1,8 @@
-# Duanjian / 短笺
+# Notelet / 短笺
 
 [简体中文](README.zh-CN.md) · [Live site](https://md.youcaidi.link) · [Contributing](CONTRIBUTING.md)
 
-Duanjian is a minimal, Telegra.ph-inspired service for sharing Markdown documents and Codex conversations. It runs entirely on Cloudflare Workers, KV, and R2, and supports English and Simplified Chinese.
+Notelet is a minimal, Telegra.ph-inspired service for sharing Markdown documents and Codex conversations. Its English name means “a little or short note,” directly reflecting the Chinese name 短笺. It runs entirely on Cloudflare Workers, KV, and R2, and supports English and Simplified Chinese.
 
 ## Features
 
@@ -102,7 +102,7 @@ Expired shares return `410 Gone`. The Worker checks `expiresAt` on every read, w
 
 ## Privacy and security
 
-Publishing is anonymous, so a public instance should keep Cloudflare rate limiting enabled. Duanjian stores only visible user content, assistant answers, visible progress, and readable reasoning summaries. It does not export hidden chain-of-thought, system instructions, credentials, or raw tool payloads.
+Publishing is anonymous, so a public instance should keep Cloudflare rate limiting enabled. Notelet stores only visible user content, assistant answers, visible progress, and readable reasoning summaries. It does not export hidden chain-of-thought, system instructions, credentials, or raw tool payloads.
 
 Never commit `.dev.vars` or credentials. See [Security](SECURITY.md) for reporting instructions.
 

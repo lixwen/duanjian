@@ -9,6 +9,8 @@ describe("internationalization", () => {
   });
 
   it("renders variables in both languages", () => {
+    expect(createTranslator("zh")("brandName")).toBe("短笺");
+    expect(createTranslator("en")("brandName")).toBe("Notelet");
     expect(createTranslator("zh")("expiresHours", { count: 2 })).toBe("约 2 小时后过期");
     expect(createTranslator("en")("expiresHours", { count: 2 })).toBe("Expires in about 2 hours");
   });

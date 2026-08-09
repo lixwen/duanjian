@@ -1,5 +1,6 @@
 const messages = {
   zh: {
+    brandName: "短笺",
     appTitle: "短笺 — Markdown 分享",
     appDescription: "短笺是一个极简的 Markdown 文档分享工具，支持短链和链接有效期。",
     backHome: "返回新建页面",
@@ -109,8 +110,9 @@ const messages = {
     copied: "链接已复制",
   },
   en: {
-    appTitle: "Duanjian — Markdown sharing",
-    appDescription: "Duanjian is a minimal Markdown sharing tool with short links and optional expiration.",
+    brandName: "Notelet",
+    appTitle: "Notelet — Markdown sharing",
+    appDescription: "Notelet is a minimal Markdown sharing tool with short links and optional expiration.",
     backHome: "Create a new share",
     editorMode: "Editor mode",
     visual: "Edit",
@@ -134,9 +136,9 @@ const messages = {
     markdownContent: "Markdown content",
     dropMarkdown: "Drop to import Markdown",
     editorFootnote: "Type / to insert blocks · Paste images · Switch to Markdown source",
-    createMarkdown: "Share Markdown with Duanjian",
+    createMarkdown: "Share Markdown with Notelet",
     codexConversation: "CODEX CONVERSATION",
-    createContent: "Share content with Duanjian",
+    createContent: "Share content with Notelet",
     toc: "Contents",
     documentToc: "On this page",
     conversationToc: "Conversation",
@@ -265,9 +267,11 @@ export function applyStaticTranslations(locale, root = document) {
   const t = createTranslator(locale);
   root.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
   root.title = t("appTitle");
+  root.querySelector('meta[name="application-name"]')?.setAttribute("content", t("brandName"));
   root.querySelector('meta[name="description"]')?.setAttribute("content", t("appDescription"));
 
   const textBySelector = {
+    ".wordmark span": "brandName",
     '.mode-button[data-mode="visual"]': "visual",
     '.mode-button[data-mode="source"]': "source",
     "#publishButton": "publish",

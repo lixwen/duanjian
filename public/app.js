@@ -664,7 +664,7 @@ async function loadShare(slug) {
       showStatus(response.status, data.error);
       return;
     }
-    document.title = `${data.title} — ${locale === "zh" ? "短笺" : "Duanjian"}`;
+    document.title = `${data.title} — ${t("brandName")}`;
     if (data.kind === "conversation") {
       $("#conversationSource").textContent = `${data.source || "Codex"} ${t("conversationSuffix")}`;
       $("#conversationTitle").textContent = data.title;

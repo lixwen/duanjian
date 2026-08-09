@@ -16,4 +16,4 @@ Do not include real credentials, private documents, or private conversation expo
 - Treat `.dev.vars`, API tokens, and account credentials as secrets.
 - Restrict R2 access to the Worker rather than exposing the bucket publicly.
 - Review `wrangler.jsonc` resource IDs and domain routes before deploying a fork.
-- Duanjian exports readable reasoning summaries only; it must not publish hidden chain-of-thought or system instructions.
+- Notelet exports readable reasoning summaries only; it must not publish hidden chain-of-thought or system instructions.

@@ -2,7 +2,7 @@
 
 ## Cloudflare resources
 
-Duanjian expects these bindings in `wrangler.jsonc`:
+Notelet expects these bindings in `wrangler.jsonc`:
 
 - `DOCS`: Workers KV namespace for documents and conversations
 - `IMAGES`: private R2 bucket for images

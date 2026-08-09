@@ -8,6 +8,6 @@ node_modules/
 dist/
 work/
 outputs/
-design-qa.md
+.audit/
 .DS_Store
 *.log

@@ -36,6 +36,7 @@
   "dependencies": {
     "@milkdown/crepe": "^7.22.0",
     "@milkdown/kit": "^7.22.0",
+    "@phosphor-icons/webcomponents": "^2.1.5",
     "highlight.js": "^11.11.1",
     "marked": "^16.2.1",
     "mermaid": "^11.16.1"

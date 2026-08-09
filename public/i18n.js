@@ -16,6 +16,9 @@ const messages = {
     copyLink: "复制链接",
     languageSwitch: "Switch to English",
     languageShort: "EN",
+    languageMenuLabel: "语言",
+    languageTarget: "English",
+    moreActions: "更多",
     titlePlaceholder: "标题",
     documentTitle: "文档标题",
     authorPlaceholder: "你的名字（可选）",
@@ -186,6 +189,9 @@ const messages = {
     copyLink: "Copy link",
     languageSwitch: "切换到中文",
     languageShort: "中",
+    languageMenuLabel: "Language",
+    languageTarget: "中文",
+    moreActions: "More",
     titlePlaceholder: "Title",
     documentTitle: "Document title",
     authorPlaceholder: "Your name (optional)",
@@ -399,7 +405,9 @@ export function applyStaticTranslations(locale, root = document) {
     '.mode-button[data-mode="visual"]': "visual",
     '.mode-button[data-mode="source"]': "source",
     "#publishButton": "publish",
-    ".status-link": "status",
+    '[data-menu-label="status"]': "status",
+    '[data-menu-label="language"]': "languageMenuLabel",
+    "[data-language-target]": "languageTarget",
     "#statusCreateLink": "newNotelet",
     "#copyLinkButton": "copyLink",
     "#editorLoading": "editorLoading",
@@ -480,8 +488,11 @@ export function applyStaticTranslations(locale, root = document) {
   }
 
   root.querySelectorAll("[data-language-toggle]").forEach((button) => {
-    button.textContent = t("languageShort");
     button.setAttribute("aria-label", t("languageSwitch"));
     button.setAttribute("title", t("languageSwitch"));
+  });
+  root.querySelectorAll("[data-utility-trigger]").forEach((button) => {
+    button.setAttribute("aria-label", t("moreActions"));
+    button.setAttribute("title", t("moreActions"));
   });
 }

@@ -62,7 +62,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   height: 28px;
 }
 
-.topbar-actions { display: flex; align-items: center; gap: 10px; }
+.topbar-actions { display: flex; align-items: center; gap: 8px; }
 
 .mode-switch {
   display: flex;
@@ -95,6 +95,69 @@ button, a { -webkit-tap-highlight-color: transparent; }
 }
 
 .quiet-button:hover { color: var(--ink); background: rgba(32,32,30,.05); }
+
+.utility-menu { position: relative; }
+
+.utility-menu-trigger {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid rgba(32, 32, 30, .07);
+  border-radius: 50%;
+  color: #777670;
+  background: rgba(251, 251, 250, .82);
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  transition: color .16s ease, background .16s ease, border-color .16s ease;
+}
+
+.utility-menu-trigger:hover,
+.utility-menu-trigger[aria-expanded="true"] {
+  border-color: rgba(32, 32, 30, .10);
+  color: var(--ink);
+  background: #f2f1ed;
+}
+
+.utility-trigger-icon { display: block; }
+
+.utility-menu-popover {
+  position: absolute;
+  z-index: 80;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 214px;
+  padding: 6px;
+  border: 1px solid rgba(32, 32, 30, .10);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 14px 38px rgba(32, 32, 30, .14), 0 2px 8px rgba(32, 32, 30, .06);
+  backdrop-filter: blur(22px);
+}
+
+.utility-menu-item {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  align-items: center;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+  text-decoration: none;
+}
+
+.utility-menu-item:hover,
+.utility-menu-item:focus-visible { background: #f1f0ec; outline: 0; }
+.utility-menu-icon { display: block; color: #777670; }
+.utility-menu-value { color: #9b9a94; font-size: 12px; }
+.utility-menu-trailing { display: block; color: #b4b3ad; }
 
 .publish-button {
   padding: 9px 16px;
@@ -1024,7 +1087,8 @@ dialog::backdrop { background: rgba(33,32,29,.18); backdrop-filter: blur(3px); }
   .mode-button { padding: 5px 8px; }
   .quiet-button { padding: 8px 6px; }
   .publish-button { padding: 8px 11px; }
-  .editor-shell, .reader-shell, .conversation-shell { width: min(100% - 36px, 760px); padding-top: 105px; }
+  .utility-menu-trigger { width: 44px; height: 44px; }
+  .editor-shell, .reader-shell, .conversation-shell { width: min(760px, calc(100% - 36px)); padding-top: 105px; }
   .title-input, .reader-title { font-size: 39px; }
   .markdown-input { font-size: 14px; }
   .visual-editor .milkdown .ProseMirror { font-size: 17px; }
@@ -1035,12 +1099,12 @@ dialog::backdrop { background: rgba(33,32,29,.18); backdrop-filter: blur(3px); }
   .conversation-head { margin-bottom: 42px; }
   .conversation-feed { gap: 54px; }
   .conversation-user { padding: 15px 16px; }
-  .status-link { display: none; }
-  .product-info { width: min(100% - 36px, 700px); padding: 56px 0 70px; }
+  .drop-hint { inset: -12px 0; }
+  .product-info { width: min(700px, calc(100% - 36px)); padding: 56px 0 70px; }
   .feature-grid { grid-template-columns: 1fr; margin-top: 34px; }
   .product-faq { margin-top: 54px; }
   .product-links { flex-direction: column; gap: 12px; }
-  .system-status { width: min(100% - 36px, 700px); padding-top: 104px; }
+  .system-status { width: min(700px, calc(100% - 36px)); padding-top: 104px; }
   .status-overview { grid-template-columns: repeat(2, 1fr); margin: 36px 0 54px; }
   .quota-grid { grid-template-columns: 1fr; }
   .resource-grid { grid-template-columns: 1fr; }

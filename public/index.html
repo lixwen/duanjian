@@ -30,23 +30,64 @@
         <span>短笺</span>
       </a>
       <div class="topbar-actions editor-only">
-        <a class="quiet-button as-link status-link" href="/status">状态</a>
-        <button class="quiet-button language-button" data-language-toggle type="button" aria-label="Switch to English">EN</button>
         <div class="mode-switch" role="group" aria-label="编辑模式">
           <button class="mode-button is-active" data-mode="visual" type="button">编辑</button>
           <button class="mode-button" data-mode="source" type="button">源码</button>
         </div>
         <button class="publish-button" id="publishButton" type="button">发布</button>
+        <div class="utility-menu" data-utility-menu>
+          <button class="utility-menu-trigger" data-utility-trigger type="button" aria-expanded="false" aria-haspopup="menu" aria-controls="editorUtilityMenu" aria-label="更多">
+            <ph-dots-three class="utility-trigger-icon" size="21" aria-hidden="true"></ph-dots-three>
+          </button>
+          <div class="utility-menu-popover" id="editorUtilityMenu" role="menu" hidden>
+            <button class="utility-menu-item" data-language-toggle type="button" role="menuitem">
+              <ph-globe-simple class="utility-menu-icon" size="17" aria-hidden="true"></ph-globe-simple>
+              <span data-menu-label="language">语言</span>
+              <span class="utility-menu-value" data-language-target>English</span>
+            </button>
+            <a class="utility-menu-item" href="/status" role="menuitem">
+              <ph-pulse class="utility-menu-icon" size="17" aria-hidden="true"></ph-pulse>
+              <span data-menu-label="status">状态</span>
+              <ph-caret-right class="utility-menu-trailing" size="13" aria-hidden="true"></ph-caret-right>
+            </a>
+          </div>
+        </div>
       </div>
       <div class="topbar-actions reader-only" hidden>
-        <a class="quiet-button as-link status-link" href="/status">状态</a>
-        <button class="quiet-button language-button" data-language-toggle type="button" aria-label="Switch to English">EN</button>
         <button class="quiet-button" id="copyLinkButton" type="button">复制链接</button>
         <a class="quiet-button as-link" id="rawLink" href="#">Markdown</a>
+        <div class="utility-menu" data-utility-menu>
+          <button class="utility-menu-trigger" data-utility-trigger type="button" aria-expanded="false" aria-haspopup="menu" aria-controls="readerUtilityMenu" aria-label="更多">
+            <ph-dots-three class="utility-trigger-icon" size="21" aria-hidden="true"></ph-dots-three>
+          </button>
+          <div class="utility-menu-popover" id="readerUtilityMenu" role="menu" hidden>
+            <button class="utility-menu-item" data-language-toggle type="button" role="menuitem">
+              <ph-globe-simple class="utility-menu-icon" size="17" aria-hidden="true"></ph-globe-simple>
+              <span data-menu-label="language">语言</span>
+              <span class="utility-menu-value" data-language-target>English</span>
+            </button>
+            <a class="utility-menu-item" href="/status" role="menuitem">
+              <ph-pulse class="utility-menu-icon" size="17" aria-hidden="true"></ph-pulse>
+              <span data-menu-label="status">状态</span>
+              <ph-caret-right class="utility-menu-trailing" size="13" aria-hidden="true"></ph-caret-right>
+            </a>
+          </div>
+        </div>
       </div>
       <div class="topbar-actions status-only" hidden>
-        <button class="quiet-button language-button" data-language-toggle type="button" aria-label="Switch to English">EN</button>
         <a class="quiet-button as-link" id="statusCreateLink" href="/">新建短笺</a>
+        <div class="utility-menu" data-utility-menu>
+          <button class="utility-menu-trigger" data-utility-trigger type="button" aria-expanded="false" aria-haspopup="menu" aria-controls="statusUtilityMenu" aria-label="更多">
+            <ph-dots-three class="utility-trigger-icon" size="21" aria-hidden="true"></ph-dots-three>
+          </button>
+          <div class="utility-menu-popover" id="statusUtilityMenu" role="menu" hidden>
+            <button class="utility-menu-item" data-language-toggle type="button" role="menuitem">
+              <ph-globe-simple class="utility-menu-icon" size="17" aria-hidden="true"></ph-globe-simple>
+              <span data-menu-label="language">语言</span>
+              <span class="utility-menu-value" data-language-target>English</span>
+            </button>
+          </div>
+        </div>
       </div>
     </header>
 

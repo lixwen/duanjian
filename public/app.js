@@ -1,4 +1,8 @@
 import "./styles.css";
+import "@phosphor-icons/webcomponents/PhCaretRight";
+import "@phosphor-icons/webcomponents/PhDotsThree";
+import "@phosphor-icons/webcomponents/PhGlobeSimple";
+import "@phosphor-icons/webcomponents/PhPulse";
 import { applyStaticTranslations, createTranslator, detectLocale, translateServerError } from "./i18n.js";
 
 const $ = (selector) => document.querySelector(selector);
@@ -906,6 +910,66 @@ async function copyText(text) {
 document.querySelectorAll(".mode-button").forEach((button) => {
   button.addEventListener("click", () => setMode(button.dataset.mode));
 });
+
+function closeUtilityMenu(menu, restoreFocus = false) {
+  const trigger = menu.querySelector("[data-utility-trigger]");
+  const popover = menu.querySelector(".utility-menu-popover");
+  popover.hidden = true;
+  trigger.setAttribute("aria-expanded", "false");
+  if (restoreFocus) trigger.focus();
+}
+
+function openUtilityMenu(menu, focusFirst = false) {
+  document.querySelectorAll("[data-utility-menu]").forEach((candidate) => {
+    if (candidate !== menu) closeUtilityMenu(candidate);
+  });
+  const trigger = menu.querySelector("[data-utility-trigger]");
+  const popover = menu.querySelector(".utility-menu-popover");
+  popover.hidden = false;
+  trigger.setAttribute("aria-expanded", "true");
+  if (focusFirst) popover.querySelector('[role="menuitem"]')?.focus();
+}
+
+document.querySelectorAll("[data-utility-menu]").forEach((menu) => {
+  const trigger = menu.querySelector("[data-utility-trigger]");
+  const popover = menu.querySelector(".utility-menu-popover");
+  trigger.addEventListener("click", () => {
+    if (popover.hidden) openUtilityMenu(menu);
+    else closeUtilityMenu(menu);
+  });
+  trigger.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowDown") return;
+    event.preventDefault();
+    openUtilityMenu(menu, true);
+  });
+  popover.addEventListener("keydown", (event) => {
+    const items = [...popover.querySelectorAll('[role="menuitem"]')];
+    const current = items.indexOf(document.activeElement);
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const offset = event.key === "ArrowDown" ? 1 : -1;
+      items[(current + offset + items.length) % items.length]?.focus();
+    }
+    if (event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      items[event.key === "Home" ? 0 : items.length - 1]?.focus();
+    }
+  });
+});
+
+document.addEventListener("click", (event) => {
+  document.querySelectorAll("[data-utility-menu]").forEach((menu) => {
+    if (!menu.contains(event.target)) closeUtilityMenu(menu);
+  });
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  const openMenu = [...document.querySelectorAll("[data-utility-menu]")]
+    .find((menu) => !menu.querySelector(".utility-menu-popover").hidden);
+  if (openMenu) closeUtilityMenu(openMenu, true);
+});
+
 elements.publishButton.addEventListener("click", openPublishDialog);
 $("#closePublishDialog").addEventListener("click", () => elements.publishDialog.close());
 $("#publishForm").addEventListener("submit", (event) => {

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#fbfbfa" />
+    <meta name="application-name" content="短笺" />
+    <meta name="description" content="短笺是一个极简的 Markdown 文档分享工具，支持短链和链接有效期。" />
+    <title>短笺 — Markdown 分享</title>
+    <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+    <script src="/app.js" type="module"></script>
+  </head>
+  <body>
+    <header class="topbar" id="topbar">
+      <a class="wordmark" href="/" aria-label="返回新建页面">
+        <img class="brand-mark" src="/logo.svg" alt="" width="28" height="28" />
+        <span>短笺</span>
+      </a>
+      <div class="topbar-actions editor-only">
+        <button class="quiet-button language-button" data-language-toggle type="button" aria-label="Switch to English">EN</button>
+        <div class="mode-switch" role="group" aria-label="编辑模式">
+          <button class="mode-button is-active" data-mode="visual" type="button">编辑</button>
+          <button class="mode-button" data-mode="source" type="button">源码</button>
+        </div>
+        <button class="quiet-button" id="settingsButton" type="button">分享设置</button>
+        <button class="publish-button" id="publishButton" type="button">发布</button>
+      </div>
+      <div class="topbar-actions reader-only" hidden>
+        <button class="quiet-button language-button" data-language-toggle type="button" aria-label="Switch to English">EN</button>
+        <button class="quiet-button" id="copyLinkButton" type="button">复制链接</button>
+        <a class="quiet-button as-link" id="rawLink" href="#">Markdown</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="editor-shell" id="editorView">
+        <input
+          class="title-input"
+          id="titleInput"
+          type="text"
+          maxlength="160"
+          placeholder="标题"
+          aria-label="文档标题"
+          autocomplete="off"
+        />
+        <input
+          class="author-input"
+          id="authorInput"
+          type="text"
+          maxlength="80"
+          placeholder="你的名字（可选）"
+          aria-label="作者"
+          autocomplete="off"
+        />
+
+        <div class="drop-zone" id="dropZone">
+          <div class="visual-editor" id="visualEditor" aria-label="所见即所得 Markdown 编辑器">
+            <p class="editor-loading" id="editorLoading">正在加载编辑器…</p>
+          </div>
+          <textarea
+            class="markdown-input"
+            id="markdownInput"
+            placeholder="# 从这里开始写…&#10;&#10;也可以把 .md 文件拖到页面中。"
+            aria-label="Markdown 内容"
+            spellcheck="false"
+            hidden
+          ></textarea>
+          <div class="drop-hint" id="dropHint">松开以导入 Markdown</div>
+        </div>
+        <p class="editor-footnote">输入 / 插入内容块 · 支持粘贴图片 · 可切换 Markdown 源码</p>
+      </section>
+
+      <section class="reader-shell" id="readerView" hidden>
+        <h1 class="reader-title" id="readerTitle"></h1>
+        <div class="reader-meta" id="readerMeta"></div>
+        <article class="markdown-body" id="readerBody"></article>
+        <footer class="reader-footer">
+          <span id="expiryLabel"></span>
+          <a href="/">用短笺分享 Markdown</a>
+        </footer>
+      </section>
+
+      <section class="conversation-shell" id="conversationView" hidden>
+        <header class="conversation-head">
+          <p class="conversation-kicker" id="conversationSource">CODEX 会话</p>
+          <h1 class="reader-title" id="conversationTitle"></h1>
+          <div class="reader-meta" id="conversationMeta"></div>
+        </header>
+        <div class="conversation-feed" id="conversationFeed"></div>
+        <footer class="reader-footer">
+          <span id="conversationExpiry"></span>
+          <a href="/">用短笺分享内容</a>
+        </footer>
+      </section>
+
+      <aside class="toc-panel" id="tocPanel" hidden>
+        <button class="toc-toggle" id="tocToggle" type="button" aria-controls="tocContent" aria-expanded="true">
+          目录
+        </button>
+        <div class="toc-content" id="tocContent">
+          <p class="toc-label" id="tocLabel">本文目录</p>
+          <nav class="toc-nav" id="tocNav" aria-label="文档目录"></nav>
+        </div>
+      </aside>
+
+      <section class="status-view" id="statusView" hidden>
+        <p class="status-code" id="statusCode">404</p>
+        <h1 id="statusTitle">没有找到这篇文档</h1>
+        <p id="statusMessage">链接可能不完整，或者文档已经被删除。</p>
+        <a href="/">创建一篇新文档</a>
+      </section>
+    </main>
+
+    <dialog class="settings-dialog" id="settingsDialog">
+      <form method="dialog" id="settingsForm">
+        <div class="dialog-head">
+          <div>
+            <p class="eyebrow">Share settings</p>
+            <h2>分享设置</h2>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="关闭" type="submit">×</button>
+        </div>
+
+        <label class="field-label" for="ttlSelect">链接有效期</label>
+        <select id="ttlSelect">
+          <option value="3600">1 小时</option>
+          <option value="86400">1 天</option>
+          <option value="604800" selected>7 天</option>
+          <option value="2592000">30 天</option>
+          <option value="31536000">1 年</option>
+          <option value="0">永不过期</option>
+        </select>
+
+        <label class="field-label" for="slugInput"><span id="slugLabelText">自定义短链</span> <span id="slugOptional">可选</span></label>
+        <div class="slug-field">
+          <span id="slugPrefix">/</span>
+          <input id="slugInput" type="text" maxlength="40" placeholder="project-notes" autocomplete="off" />
+        </div>
+        <p class="field-help">留空会生成 8 位随机短链。仅限小写字母、数字和连字符。</p>
+
+        <button class="dialog-done" value="default" type="submit">完成</button>
+      </form>
+    </dialog>
+
+    <dialog class="success-dialog" id="successDialog">
+      <div class="success-mark" aria-hidden="true">✓</div>
+      <h2>文档已发布</h2>
+      <p>复制下面的短链即可分享。</p>
+      <div class="share-link-row">
+        <input id="shareUrlInput" readonly aria-label="分享链接" />
+        <button id="copySuccessLink" type="button">复制</button>
+      </div>
+      <div class="success-actions">
+        <button class="quiet-button" id="continueEditingButton" type="button">继续编辑</button>
+        <a class="publish-button as-link" id="openDocumentLink" href="#">打开文档</a>
+      </div>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>

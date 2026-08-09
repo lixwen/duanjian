@@ -1,0 +1,48 @@
+{
+  "name": "duanjian",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A minimal, bilingual Markdown and Codex conversation sharing service for Cloudflare Workers.",
+  "license": "MIT",
+  "author": "lixwen",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/lixwen/duanjian.git"
+  },
+  "homepage": "https://md.youcaidi.link",
+  "bugs": {
+    "url": "https://github.com/lixwen/duanjian/issues"
+  },
+  "keywords": [
+    "markdown",
+    "cloudflare-workers",
+    "short-link",
+    "codex",
+    "r2",
+    "workers-kv"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "npm run build && wrangler dev",
+    "deploy": "npm run build && wrangler deploy",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "validate": "npm run check && npm test && npm run build"
+  },
+  "dependencies": {
+    "@milkdown/crepe": "^7.22.0",
+    "@milkdown/kit": "^7.22.0",
+    "marked": "^16.2.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260809.1",
+    "typescript": "^5.9.2",
+    "vite": "^7.3.6",
+    "vitest": "^3.2.4",
+    "wrangler": "^4.28.1"
+  }
+}

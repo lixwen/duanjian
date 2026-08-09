@@ -1,0 +1,5 @@
+# Optional local-only values. Copy this file to .dev.vars.
+# Never commit real credentials or tokens.
+
+# Reserved for a future authenticated administration endpoint.
+ADMIN_TOKEN=replace-with-a-random-local-value

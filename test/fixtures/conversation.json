@@ -1,0 +1,27 @@
+{
+  "title": "Codex 会话分享测试",
+  "source": "Codex",
+  "turns": [
+    {
+      "id": "turn-1",
+      "label": "为什么图片没有上传？",
+      "user": [
+        { "type": "text", "markdown": "请检查这个截图，并说明 **图片** 为什么丢失。" },
+        { "type": "localImage", "path": "/var/folders/bb/3yt9yvls169gf5h2br_n7x8w0000gn/T/codex-clipboard-6fe54985-f6bf-4a2e-a64d-0be4c3c10589.png", "alt": "旧版会话目录截图" }
+      ],
+      "reasoningSummaries": ["先区分 Markdown 文档分享与结构化会话分享，再检查图片资产的上传和引用关系。"],
+      "commentary": ["正在检查会话模型和图片引用。"],
+      "answers": ["## 原因\n\n旧方案把所有消息拼成一个 Markdown，因此图片路径和消息边界都会丢失。\n\n```ts\ntype Share = Document | Conversation\n```"],
+      "activities": [{ "type": "file", "label": "检查分享数据模型", "status": "完成" }]
+    },
+    {
+      "id": "turn-2",
+      "label": "新的浏览方式",
+      "user": [{ "type": "text", "markdown": "每个 Codex 回答应保留独立 Markdown。" }],
+      "reasoningSummaries": [],
+      "commentary": [],
+      "answers": ["## 新方案\n\n左侧目录按对话轮次定位，回答内部标题不会污染全局目录。"],
+      "activities": []
+    }
+  ]
+}

@@ -18,6 +18,23 @@ describe("Markdown renderer", () => {
     expect(html).not.toContain("javascript:");
     expect(html).toContain('href="#"');
   });
+
+  it("marks Mermaid fences for safe client-side rendering", () => {
+    const html = renderMarkdown("```mermaid\nflowchart LR\n  A --> B\n```");
+    expect(html).toContain('class="language-mermaid"');
+    expect(html).toContain("flowchart LR");
+  });
+
+  it("preserves common language identifiers for syntax highlighting", () => {
+    const html = renderMarkdown("```typescript\nconst value: number = 1;\n```");
+    expect(html).toContain('class="language-typescript"');
+    expect(html).toContain("const value: number = 1;");
+  });
+
+  it("does not allow arbitrary code-fence text in class attributes", () => {
+    const html = renderMarkdown("```\" onmouseover=alert(1)\nunsafe\n```");
+    expect(html).not.toContain("onmouseover");
+  });
 });
 
 describe("validation", () => {

@@ -8,6 +8,7 @@ Notelet is a minimal, Telegra.ph-inspired service for sharing Markdown documents
 
 - Notion-style visual Markdown editing with source mode
 - Headings, lists, tasks, quotes, code blocks, tables, and pasted images
+- Syntax highlighting for common programming languages and Mermaid diagrams
 - Collapsible table of contents while editing and reading
 - Structured Codex conversation pages with per-turn Markdown and image support
 - Random or custom short links with configurable TTL
@@ -15,6 +16,7 @@ Notelet is a minimal, Telegra.ph-inspired service for sharing Markdown documents
 - Anonymous publishing protected by Cloudflare rate limiting
 - Safe Markdown rendering with raw HTML disabled
 - English and Simplified Chinese UI
+- A public `/status` page with share totals, R2 storage, and optional free-tier operation usage
 
 ## Architecture
 
@@ -97,6 +99,18 @@ npm run deploy    # build and deploy with Wrangler
 | `POST /api/images` | Upload an image |
 | `GET /i/:key` | Retrieve an image from R2 |
 | `POST /api/preview` | Render a safe Markdown preview |
+| `GET /api/status` | Retrieve aggregated, content-free service statistics |
+
+The reader recognizes fenced code languages such as `javascript`, `typescript`, `python`, `go`, `rust`, `java`, `bash`, `json`, `sql`, and CSS/HTML. A `mermaid` fence renders supported Mermaid diagrams in strict security mode:
+
+````markdown
+```mermaid
+flowchart LR
+  Write --> Publish --> Share
+```
+````
+
+The status page always counts documents, conversations, R2 objects, and R2 bytes directly. To display Workers, KV, and R2 operation usage, configure `CLOUDFLARE_ACCOUNT_ID` and the secret `CLOUDFLARE_ANALYTICS_TOKEN` with read-only Account Analytics permission. Never commit the token.
 
 Expired shares return `410 Gone`. The Worker checks `expiresAt` on every read, while KV expiration and a daily R2 cleanup job perform eventual physical deletion.
 

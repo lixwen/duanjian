@@ -8,6 +8,7 @@
 
 - 类 Notion 的可视化 Markdown 编辑器，并可切换源码模式
 - 支持标题、列表、任务、引用、代码块、表格以及直接粘贴图片
+- 常见编程语言代码高亮，并支持 Mermaid 图表
 - 编辑和阅读时均可使用可收起目录
 - 以独立消息块展示 Codex 会话，保留每轮 Markdown 和图片
 - 支持随机或自定义短链，并可配置有效期
@@ -15,6 +16,7 @@
 - 匿名发布，并使用 Cloudflare Rate Limiting 防止滥用
 - 禁用原始 HTML，安全渲染 Markdown
 - 简体中文和英文界面
+- `/status` 状态页展示分享数量、R2 存储和可选的免费额度操作用量
 
 ## 架构
 
@@ -97,6 +99,18 @@ npm run deploy    # 使用 Wrangler 构建并部署
 | `POST /api/images` | 上传图片 |
 | `GET /i/:key` | 从 R2 获取图片 |
 | `POST /api/preview` | 安全预览 Markdown |
+| `GET /api/status` | 获取不包含内容的聚合服务状态 |
+
+阅读页可识别 `javascript`、`typescript`、`python`、`go`、`rust`、`java`、`bash`、`json`、`sql`、CSS/HTML 等常见代码围栏。将围栏语言写为 `mermaid`，即可在严格安全模式下渲染 Mermaid 图表：
+
+````markdown
+```mermaid
+flowchart LR
+  编写 --> 发布 --> 分享
+```
+````
+
+状态页始终直接统计文档、会话、R2 对象数和 R2 体积。如需显示 Workers、KV 和 R2 操作次数，请配置 `CLOUDFLARE_ACCOUNT_ID`，并以 secret 方式设置具备 Account Analytics 只读权限的 `CLOUDFLARE_ANALYTICS_TOKEN`。不得将 token 提交到仓库。
 
 过期内容返回 `410 Gone`。Worker 会在每次读取时检查 `expiresAt`，KV 过期机制和每日 R2 清理任务负责最终物理删除。
 

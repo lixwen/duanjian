@@ -36,7 +36,9 @@
   "dependencies": {
     "@milkdown/crepe": "^7.22.0",
     "@milkdown/kit": "^7.22.0",
-    "marked": "^16.2.1"
+    "highlight.js": "^11.11.1",
+    "marked": "^16.2.1",
+    "mermaid": "^11.16.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260809.1",

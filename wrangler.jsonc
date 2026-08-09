@@ -3,6 +3,12 @@
   "name": "duanjian",
   "main": "src/index.ts",
   "compatibility_date": "2026-08-08",
+  "vars": {
+    "CLOUDFLARE_ACCOUNT_ID": "d1665159130e619da07e405470778702",
+    "WORKER_SCRIPT_NAME": "duanjian",
+    "KV_NAMESPACE_ID": "d987009994e047668eee293842a25817",
+    "R2_BUCKET_NAME": "duanjian-images"
+  },
   "kv_namespaces": [
     {
       "binding": "DOCS",

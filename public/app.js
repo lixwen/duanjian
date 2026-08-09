@@ -15,6 +15,7 @@ const elements = {
   conversationView: $("#conversationView"),
   conversationFeed: $("#conversationFeed"),
   statusView: $("#statusView"),
+  systemStatusView: $("#systemStatusView"),
   titleInput: $("#titleInput"),
   authorInput: $("#authorInput"),
   markdownInput: $("#markdownInput"),
@@ -488,6 +489,67 @@ function createRenderedBlock(className, html) {
   return block;
 }
 
+async function enhanceRenderedMarkdown(root) {
+  const mermaidCodeBlocks = [...root.querySelectorAll("pre > code.language-mermaid")];
+  const regularCodeBlocks = [...root.querySelectorAll("pre > code:not(.language-mermaid)")];
+
+  if (regularCodeBlocks.length) {
+    const { default: highlight } = await import("highlight.js/lib/common");
+    regularCodeBlocks.forEach((code) => {
+      const languageClass = [...code.classList].find((name) => name.startsWith("language-"));
+      const language = languageClass?.slice("language-".length) ?? "";
+      if (language && !highlight.getLanguage(language)) {
+        const result = highlight.highlightAuto(code.textContent ?? "");
+        code.innerHTML = result.value;
+        code.classList.add("hljs");
+        if (result.language) code.dataset.detectedLanguage = result.language;
+        return;
+      }
+      highlight.highlightElement(code);
+    });
+  }
+
+  if (!mermaidCodeBlocks.length) return;
+  const diagramNodes = mermaidCodeBlocks.map((code) => {
+    const diagram = document.createElement("div");
+    diagram.className = "mermaid-diagram";
+    diagram.textContent = code.textContent ?? "";
+    code.parentElement.replaceWith(diagram);
+    return diagram;
+  });
+
+  try {
+    const { default: mermaid } = await import("mermaid");
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: "strict",
+      suppressErrorRendering: true,
+      theme: "neutral",
+      fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
+      flowchart: { htmlLabels: false, useMaxWidth: true },
+    });
+    await mermaid.run({ nodes: diagramNodes, suppressErrors: true });
+    diagramNodes.forEach((diagram) => {
+      diagram.setAttribute("role", "img");
+      diagram.setAttribute("aria-label", t("diagram"));
+    });
+  } catch (error) {
+    console.error(error);
+    diagramNodes.forEach((diagram) => {
+      const source = diagram.textContent ?? "";
+      diagram.className = "diagram-error";
+      diagram.replaceChildren();
+      const message = document.createElement("p");
+      message.textContent = t("diagramError");
+      const fallback = document.createElement("pre");
+      const code = document.createElement("code");
+      code.textContent = source;
+      fallback.append(code);
+      diagram.append(message, fallback);
+    });
+  }
+}
+
 function createDisclosure(label, className, children) {
   const details = document.createElement("details");
   details.className = `conversation-disclosure ${className}`;
@@ -652,6 +714,113 @@ function scheduleEditorTableOfContents() {
   editorTocTimer = setTimeout(buildEditorTableOfContents, 120);
 }
 
+function formatStatusNumber(value) {
+  if (!Number.isFinite(value)) return t("notAvailable");
+  return new Intl.NumberFormat(locale === "zh" ? "zh-CN" : "en", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+}
+
+function formatBytes(value) {
+  if (!Number.isFinite(value)) return t("notAvailable");
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let size = value;
+  let index = 0;
+  while (size >= 1000 && index < units.length - 1) {
+    size /= 1000;
+    index += 1;
+  }
+  return `${new Intl.NumberFormat(locale === "zh" ? "zh-CN" : "en", { maximumFractionDigits: index ? 2 : 0 }).format(size)} ${units[index]}`;
+}
+
+function statusValue(value, unit) {
+  return unit === "bytes" ? formatBytes(value) : formatStatusNumber(value);
+}
+
+function overviewCard(label, value, detail) {
+  const card = document.createElement("article");
+  card.className = "overview-card";
+  const labelNode = document.createElement("p");
+  labelNode.textContent = label;
+  const valueNode = document.createElement("strong");
+  valueNode.textContent = formatStatusNumber(value);
+  const detailNode = document.createElement("span");
+  detailNode.textContent = detail;
+  card.append(labelNode, valueNode, detailNode);
+  return card;
+}
+
+function quotaCard(metric) {
+  const card = document.createElement("article");
+  card.className = "quota-card";
+  const head = document.createElement("div");
+  head.className = "quota-card-head";
+  const title = document.createElement("h3");
+  title.textContent = t(metric.id);
+  const period = document.createElement("span");
+  period.textContent = t(`period_${metric.period}`);
+  head.append(title, period);
+
+  const values = document.createElement("p");
+  values.className = "quota-values";
+  const used = document.createElement("strong");
+  used.textContent = statusValue(metric.used, metric.unit);
+  const limit = document.createElement("span");
+  limit.textContent = ` / ${statusValue(metric.limit, metric.unit)}`;
+  values.append(used, limit);
+
+  const progress = document.createElement("div");
+  progress.className = "quota-progress";
+  progress.setAttribute("role", "progressbar");
+  const percentage = Number.isFinite(metric.used) ? Math.min(100, Math.max(0, metric.used / metric.limit * 100)) : 0;
+  progress.setAttribute("aria-valuemin", "0");
+  progress.setAttribute("aria-valuemax", "100");
+  progress.setAttribute("aria-valuenow", String(Math.round(percentage)));
+  const fill = document.createElement("span");
+  fill.style.width = `${percentage}%`;
+  if (percentage >= 80) fill.className = "is-warning";
+  progress.append(fill);
+
+  const source = document.createElement("a");
+  source.href = metric.source;
+  source.target = "_blank";
+  source.rel = "noopener noreferrer";
+  source.textContent = t("officialQuotaSource");
+  card.append(head, values, progress, source);
+  return card;
+}
+
+async function loadSystemStatus() {
+  document.querySelectorAll(".editor-only, .reader-only").forEach((el) => { el.hidden = true; });
+  document.querySelectorAll(".status-only").forEach((el) => { el.hidden = false; });
+  elements.editorView.hidden = true;
+  elements.readerView.hidden = true;
+  elements.conversationView.hidden = true;
+  elements.statusView.hidden = true;
+  elements.systemStatusView.hidden = false;
+  document.title = t("statusPageTitle");
+  try {
+    const response = await fetch("/api/status");
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error);
+    $("#systemHealthText").textContent = t("operational");
+    $("#statusOverview").replaceChildren(
+      overviewCard(t("totalShares"), data.documents.total, t("currentTotal")),
+      overviewCard(t("markdownDocuments"), data.documents.markdown, t("currentTotal")),
+      overviewCard(t("codexConversations"), data.documents.conversations, t("currentTotal")),
+      overviewCard(t("storedImages"), data.images.objects, formatBytes(data.images.bytes)),
+    );
+    $("#quotaGrid").replaceChildren(...data.metrics.map(quotaCard));
+    $("#quotaUpdated").textContent = t("updatedAt", { date: formatDate(data.generatedAt) });
+    if (!data.analyticsAvailable) {
+      $("#statusNotice").hidden = false;
+      $("#statusNotice").textContent = t(data.analyticsConfigured ? "analyticsPartial" : "analyticsUnavailable");
+    }
+  } catch {
+    $("#systemHealthText").textContent = t("statusLoadFailed");
+    $("#statusOverview").replaceChildren();
+    $("#quotaGrid").replaceChildren();
+  }
+}
+
 async function loadShare(slug) {
   document.querySelectorAll(".editor-only").forEach((el) => { el.hidden = true; });
   document.querySelectorAll(".reader-only").forEach((el) => { el.hidden = false; });
@@ -673,12 +842,14 @@ async function loadShare(slug) {
       $("#rawLink").href = `/api/conversations/${encodeURIComponent(slug)}/raw`;
       $("#rawLink").textContent = "JSON";
       renderConversation(data);
+      await enhanceRenderedMarkdown(elements.conversationFeed);
       elements.conversationView.hidden = false;
       return;
     }
     $("#readerTitle").textContent = data.title;
     $("#readerMeta").textContent = [data.author, formatDate(data.createdAt)].filter(Boolean).join(" · ");
     $("#readerBody").innerHTML = data.html;
+    await enhanceRenderedMarkdown($("#readerBody"));
     buildReaderTableOfContents();
     $("#expiryLabel").textContent = formatExpiry(data.expiresAt);
     $("#rawLink").href = `/api/docs/${encodeURIComponent(slug)}/raw`;
@@ -781,5 +952,6 @@ elements.slugInput.addEventListener("input", () => {
 $("#slugPrefix").textContent = `${location.host}/`;
 
 const slug = decodeURIComponent(location.pathname.slice(1)).replace(/\/$/, "");
-if (slug) loadShare(slug);
+if (slug === "status") loadSystemStatus();
+else if (slug) loadShare(slug);
 else initializeVisualEditor();

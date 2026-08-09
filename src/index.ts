@@ -5,10 +5,9 @@ import {
   renderConversationTurns,
   type ConversationTurn,
 } from "./conversation";
+import { getSystemStatus, type StatusEnv } from "./status";
 
-interface Env {
-  DOCS: KVNamespace;
-  IMAGES: R2Bucket;
+interface Env extends StatusEnv {
   ASSETS: Fetcher;
   PUBLISH_LIMITER: RateLimit;
   IMAGE_LIMITER: RateLimit;
@@ -87,7 +86,7 @@ function secureHeaders(headers: Headers): Headers {
   headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   headers.set(
     "Content-Security-Policy",
-    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
+    "default-src 'self'; script-src 'self' 'sha256-9Eec6WhF55BFRs1Z4Uqe2ziCzE59ZWQnWzcXR3t9BKM='; style-src 'self'; img-src 'self' https: data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
   );
   return headers;
 }
@@ -540,6 +539,12 @@ async function preview(request: Request): Promise<Response> {
 }
 
 async function handleApi(request: Request, env: Env, url: URL): Promise<Response> {
+  if (request.method === "GET" && url.pathname === "/api/status") {
+    return json(await getSystemStatus(env), 200, {
+      "Cache-Control": "public, max-age=60, stale-while-revalidate=240",
+      "X-Robots-Tag": "noindex, nofollow",
+    });
+  }
   if (request.method === "POST" && url.pathname === "/api/docs") {
     return createDocument(request, env);
   }
@@ -573,12 +578,44 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
   return error("接口不存在", 404);
 }
 
+function publicText(body: string, contentType: string): Response {
+  return new Response(body, {
+    headers: {
+      "Content-Type": `${contentType}; charset=utf-8`,
+      "Cache-Control": "public, max-age=3600",
+    },
+  });
+}
+
+function robotsText(origin: string): string {
+  return `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /i/\nDisallow: /status\n\nSitemap: ${origin}/sitemap.xml\n`;
+}
+
+function sitemapXml(origin: string): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${origin}/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>\n</urlset>\n`;
+}
+
+function llmsText(origin: string): string {
+  return `# 短笺 (Notelet)\n\n> 一个开源、极简的 Markdown 文档与 Codex 会话分享工具。\n\n短笺可将 Markdown 文档或结构化 Codex 会话发布为短链接，支持链接有效期、粘贴图片、代码语法高亮、Mermaid 图表与对话式浏览。服务运行在 Cloudflare Workers、KV 和 R2 上。\n\n## Links\n\n- Product: ${origin}/\n- Service status: ${origin}/status\n- Source code: https://github.com/lixwen/duanjian\n\n## Privacy and indexing\n\n公开首页可被搜索引擎索引；随机分享链接和 API 响应通过 X-Robots-Tag 禁止索引。请勿使用短笺发布敏感信息。\n`;
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     try {
+      if (request.method === "GET" && url.pathname === "/robots.txt") {
+        return withSecurity(publicText(robotsText(url.origin), "text/plain"));
+      }
+      if (request.method === "GET" && url.pathname === "/sitemap.xml") {
+        return withSecurity(publicText(sitemapXml(url.origin), "application/xml"));
+      }
+      if (request.method === "GET" && url.pathname === "/llms.txt") {
+        return withSecurity(publicText(llmsText(url.origin), "text/plain"));
+      }
       if (url.pathname.startsWith("/api/")) {
-        return withSecurity(await handleApi(request, env, url));
+        const response = withSecurity(await handleApi(request, env, url));
+        response.headers.set("X-Robots-Tag", "noindex, nofollow");
+        return response;
       }
       const imageMatch = url.pathname.match(/^\/i\/([^/]+)$/);
       if ((request.method === "GET" || request.method === "HEAD") && imageMatch) {
@@ -601,6 +638,7 @@ export default {
       const asset = withSecurity(await env.ASSETS.fetch(assetRequest));
       if (!url.pathname.startsWith("/assets/")) {
         asset.headers.set("Cache-Control", "no-store, max-age=0");
+        asset.headers.set("X-Robots-Tag", url.pathname === "/" ? "index, follow" : "noindex, nofollow");
       }
       return asset;
     } catch (caught) {

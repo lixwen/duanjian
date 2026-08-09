@@ -3,12 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="robots" content="noindex, nofollow" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="theme-color" content="#fbfbfa" />
     <meta name="application-name" content="短笺" />
-    <meta name="description" content="短笺是一个极简的 Markdown 文档分享工具，支持短链和链接有效期。" />
-    <title>短笺 — Markdown 分享</title>
+    <meta name="description" content="短笺（Notelet）是开源的 Markdown 文档与 Codex 会话分享工具，支持短链、有效期、图片、代码高亮和 Mermaid 图表。" />
+    <link rel="canonical" href="https://md.youcaidi.link/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="短笺 Notelet" />
+    <meta property="og:title" content="短笺 Notelet — Markdown 与 Codex 会话分享" />
+    <meta property="og:description" content="把 Markdown 文档或 Codex 会话发布为带有效期的短链接。支持图片、代码高亮和 Mermaid 图表。" />
+    <meta property="og:url" content="https://md.youcaidi.link/" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="短笺 Notelet — Markdown 与 Codex 会话分享" />
+    <meta name="twitter:description" content="开源、极简的 Markdown 文档与 Codex 会话短链分享工具。" />
+    <title>短笺 Notelet — Markdown 与 Codex 会话分享</title>
     <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"短笺","alternateName":"Notelet","url":"https://md.youcaidi.link/","applicationCategory":"ProductivityApplication","operatingSystem":"Any","description":"开源、极简的 Markdown 文档与 Codex 会话分享工具，支持短链、有效期、图片、代码高亮和 Mermaid 图表。","inLanguage":["zh-CN","en"],"isAccessibleForFree":true,"license":"https://opensource.org/license/mit","codeRepository":"https://github.com/lixwen/duanjian","featureList":["Markdown sharing","Codex conversation sharing","Expiring short links","Image upload","Syntax highlighting","Mermaid diagrams"]}</script>
     <script src="/app.js" type="module"></script>
   </head>
   <body>
@@ -18,6 +30,7 @@
         <span>短笺</span>
       </a>
       <div class="topbar-actions editor-only">
+        <a class="quiet-button as-link status-link" href="/status">状态</a>
         <button class="quiet-button language-button" data-language-toggle type="button" aria-label="Switch to English">EN</button>
         <div class="mode-switch" role="group" aria-label="编辑模式">
           <button class="mode-button is-active" data-mode="visual" type="button">编辑</button>
@@ -26,9 +39,14 @@
         <button class="publish-button" id="publishButton" type="button">发布</button>
       </div>
       <div class="topbar-actions reader-only" hidden>
+        <a class="quiet-button as-link status-link" href="/status">状态</a>
         <button class="quiet-button language-button" data-language-toggle type="button" aria-label="Switch to English">EN</button>
         <button class="quiet-button" id="copyLinkButton" type="button">复制链接</button>
         <a class="quiet-button as-link" id="rawLink" href="#">Markdown</a>
+      </div>
+      <div class="topbar-actions status-only" hidden>
+        <button class="quiet-button language-button" data-language-toggle type="button" aria-label="Switch to English">EN</button>
+        <a class="quiet-button as-link" id="statusCreateLink" href="/">新建短笺</a>
       </div>
     </header>
 
@@ -70,6 +88,26 @@
         <p class="editor-footnote">输入 / 插入内容块 · 支持粘贴图片 · 可切换 Markdown 源码</p>
       </section>
 
+      <section class="product-info editor-only" id="productInfo" aria-labelledby="productHeadline">
+        <header class="product-intro">
+          <p class="eyebrow" id="productEyebrow">开源 Markdown 分享工具</p>
+          <h2 id="productHeadline">Markdown 与 Codex 会话，一键生成短链</h2>
+          <p id="productDescription">短笺（Notelet）用于快速发布 Markdown 文档和结构化 Codex 会话。无需注册，可设置链接有效期，并保留图片、代码与图表的阅读体验。</p>
+        </header>
+        <div class="feature-grid">
+          <article><h3 id="featureWriteTitle">所见即所得，也保留源码</h3><p id="featureWriteBody">可视化编辑与 Markdown 源码自由切换，支持标题、列表、表格、代码块和粘贴图片。</p></article>
+          <article><h3 id="featureShareTitle">短链与有效期</h3><p id="featureShareBody">自动生成易分享的短链接，或自定义路径；可设置 1 小时到永久有效。</p></article>
+          <article><h3 id="featureRenderTitle">代码与图表</h3><p id="featureRenderBody">常见编程语言自动高亮，Mermaid 流程图、时序图、状态图等直接渲染。</p></article>
+        </div>
+        <div class="product-faq">
+          <h2 id="faqTitle">常见问题</h2>
+          <details><summary id="faqAccountQuestion">发布短笺需要注册账号吗？</summary><p id="faqAccountAnswer">不需要。打开页面即可编辑和发布，请不要上传敏感或私密信息。</p></details>
+          <details><summary id="faqExpiryQuestion">过期后内容会怎样？</summary><p id="faqExpiryAnswer">带有效期的文档和关联图片在到期后无法访问，并由后台清理。</p></details>
+          <details><summary id="faqOpenQuestion">短笺是否开源？</summary><p id="faqOpenAnswer">是。源代码采用 MIT 许可证，可在 GitHub 查看、部署和改进。</p></details>
+        </div>
+        <footer class="product-links"><a href="/status" id="productStatusLink">查看服务状态</a><a href="https://github.com/lixwen/duanjian" rel="noopener noreferrer" id="productSourceLink">GitHub 源代码</a></footer>
+      </section>
+
       <section class="reader-shell" id="readerView" hidden>
         <h1 class="reader-title" id="readerTitle"></h1>
         <div class="reader-meta" id="readerMeta"></div>
@@ -108,6 +146,22 @@
         <h1 id="statusTitle">没有找到这篇文档</h1>
         <p id="statusMessage">链接可能不完整，或者文档已经被删除。</p>
         <a href="/">创建一篇新文档</a>
+      </section>
+
+      <section class="system-status" id="systemStatusView" hidden aria-labelledby="systemStatusTitle">
+        <header class="system-status-head">
+          <p class="eyebrow" id="systemStatusEyebrow">服务状态</p>
+          <h1 id="systemStatusTitle">短笺运行状态</h1>
+          <p id="systemStatusDescription">Cloudflare 资源用量与公开内容统计。数据最多缓存 5 分钟。</p>
+          <div class="status-health"><span class="health-dot" aria-hidden="true"></span><span id="systemHealthText">正在读取…</span></div>
+        </header>
+        <div class="status-overview" id="statusOverview"></div>
+        <section aria-labelledby="quotaTitle">
+          <div class="quota-heading"><h2 id="quotaTitle">免费额度</h2><p id="quotaUpdated"></p></div>
+          <div class="quota-grid" id="quotaGrid"></div>
+        </section>
+        <p class="status-notice" id="statusNotice" hidden></p>
+        <p class="status-footnote" id="statusFootnote">免费额度以 Cloudflare 官方公开标准为准；Workers 请求量显示本项目用量，账户级额度可能由同账户的其他 Worker 共享。</p>
       </section>
     </main>
 

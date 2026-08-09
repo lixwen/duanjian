@@ -18,6 +18,12 @@ function safeHref(href: string): string {
 const renderer = new Renderer();
 
 renderer.html = ({ text }) => escapeHtml(text);
+renderer.code = ({ text, lang }) => {
+  const language = (lang ?? "").trim().split(/\s+/, 1)[0].toLowerCase();
+  const safeLanguage = /^[a-z0-9_+-]{1,32}$/.test(language) ? language : "";
+  const languageClass = safeLanguage ? ` class="language-${safeLanguage}"` : "";
+  return `<pre><code${languageClass}>${escapeHtml(text)}</code></pre>\n`;
+};
 renderer.link = ({ href, title, tokens }) => {
   const body = markedInstance.parser(tokens);
   const safe = escapeHtml(safeHref(href));

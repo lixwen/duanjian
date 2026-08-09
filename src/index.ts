@@ -67,6 +67,8 @@ const IMAGE_EXTENSIONS: Readonly<Record<string, string>> = {
   "image/avif": "avif",
 };
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" };
+const CANONICAL_ORIGIN = "https://notelet.youcaidi.link";
+const LEGACY_HOSTNAME = "md.youcaidi.link";
 
 function json(data: unknown, status = 200, headers: HeadersInit = {}): Response {
   return new Response(JSON.stringify(data), {
@@ -86,7 +88,7 @@ function secureHeaders(headers: Headers): Headers {
   headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   headers.set(
     "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'sha256-9Eec6WhF55BFRs1Z4Uqe2ziCzE59ZWQnWzcXR3t9BKM='; style-src 'self'; img-src 'self' https: data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
+    "default-src 'self'; script-src 'self' 'sha256-a38CekWRaWDBUH6WUFZyJnH9/gXEj5UDX3nu0tSjcyU='; style-src 'self'; img-src 'self' https: data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
   );
   return headers;
 }
@@ -603,6 +605,10 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     try {
+      if (url.hostname === LEGACY_HOSTNAME) {
+        const canonical = new URL(`${url.pathname}${url.search}`, CANONICAL_ORIGIN);
+        return withSecurity(Response.redirect(canonical, 308));
+      }
       if (request.method === "GET" && url.pathname === "/robots.txt") {
         return withSecurity(publicText(robotsText(url.origin), "text/plain"));
       }

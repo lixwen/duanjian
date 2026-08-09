@@ -5,7 +5,7 @@ import {
   renderConversationTurns,
 } from "../src/conversation";
 
-const origin = "https://md.youcaidi.link";
+const origin = "https://notelet.youcaidi.link";
 
 describe("structured conversations", () => {
   it("keeps messages separate and accepts only owned R2 images", () => {

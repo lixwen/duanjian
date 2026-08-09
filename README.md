@@ -1,6 +1,6 @@
 # Notelet / 短笺
 
-[简体中文](README.zh-CN.md) · [Live site](https://md.youcaidi.link) · [Contributing](CONTRIBUTING.md)
+[简体中文](README.zh-CN.md) · [Live site](https://notelet.youcaidi.link) · [Contributing](CONTRIBUTING.md)
 
 Notelet is a minimal, Telegra.ph-inspired service for sharing Markdown documents and Codex conversations. Its English name means “a little or short note,” directly reflecting the Chinese name 短笺. It runs entirely on Cloudflare Workers, KV, and R2, and supports English and Simplified Chinese.
 

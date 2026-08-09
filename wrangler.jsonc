@@ -56,6 +56,10 @@
   },
   "routes": [
     {
+      "pattern": "notelet.youcaidi.link",
+      "custom_domain": true
+    },
+    {
       "pattern": "md.youcaidi.link",
       "custom_domain": true
     }

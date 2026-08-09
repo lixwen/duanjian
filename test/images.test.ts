@@ -14,7 +14,7 @@ describe("image uploads", () => {
     const first = "AbCdEfGhJkMnPqRsTuVw.png";
     const second = "23456789abcdefghjkmn.webp";
     const markdown = [
-      `![one](https://md.youcaidi.link/i/${first})`,
+      `![one](https://notelet.youcaidi.link/i/${first})`,
       `![duplicate](/i/${first})`,
       `![two](/i/${second}?preview=1)`,
       "![external](https://example.com/image.png)",

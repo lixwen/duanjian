@@ -911,7 +911,7 @@ main { min-height: 100vh; }
 .status-health { display: inline-flex; align-items: center; gap: 8px; margin-top: 20px; color: #4e6e57; font-size: 13px; font-weight: 650; }
 .health-dot { width: 8px; height: 8px; border-radius: 50%; background: #5f8f69; box-shadow: 0 0 0 4px rgba(95,143,105,.12); }
 .status-overview { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 48px 0 70px; }
-.overview-card, .quota-card { border: 1px solid #e4e3de; border-radius: 10px; background: rgba(255,255,255,.44); }
+.overview-card, .quota-card, .resource-card { border: 1px solid #e4e3de; border-radius: 10px; background: rgba(255,255,255,.44); }
 .overview-card { display: grid; gap: 5px; padding: 20px; }
 .overview-card p { margin: 0; color: var(--muted); font-size: 11px; }
 .overview-card strong { font-family: var(--serif); font-size: 30px; }
@@ -930,6 +930,13 @@ main { min-height: 100vh; }
 .quota-progress > span { display: block; height: 100%; border-radius: inherit; background: #686762; }
 .quota-progress > span.is-warning { background: #b27454; }
 .quota-card a { display: inline-block; margin-top: 12px; font-size: 10px; }
+.quota-note { margin: 10px 0 0; color: #aaa9a3; font-size: 10px; line-height: 1.5; }
+.resource-section { margin-top: 54px; }
+.resource-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.resource-card { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px; }
+.resource-card h3 { margin: 0 0 6px; font-size: 13px; }
+.resource-card p { margin: 0; color: #aaa9a3; font-size: 11px; line-height: 1.5; }
+.resource-card a { flex: 0 0 auto; color: #73726d; font-size: 10px; text-underline-offset: 3px; }
 .status-notice { margin: 18px 0 0; padding: 13px 15px; border-radius: 8px; color: #73664e; background: #f3efe6; font-size: 12px; line-height: 1.6; }
 .status-footnote { max-width: 720px; margin: 26px 0 0; color: #aaa9a3; font-size: 11px; line-height: 1.7; }
 
@@ -1036,6 +1043,7 @@ dialog::backdrop { background: rgba(33,32,29,.18); backdrop-filter: blur(3px); }
   .system-status { width: min(100% - 36px, 700px); padding-top: 104px; }
   .status-overview { grid-template-columns: repeat(2, 1fr); margin: 36px 0 54px; }
   .quota-grid { grid-template-columns: 1fr; }
+  .resource-grid { grid-template-columns: 1fr; }
   .quota-heading { align-items: flex-start; flex-direction: column; }
 }
 

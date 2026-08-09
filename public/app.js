@@ -762,7 +762,7 @@ function quotaCard(metric) {
   const values = document.createElement("p");
   values.className = "quota-values";
   const used = document.createElement("strong");
-  used.textContent = statusValue(metric.used, metric.unit);
+  used.textContent = `${metric.estimated ? "≈ " : ""}${statusValue(metric.used, metric.unit)}`;
   const limit = document.createElement("span");
   limit.textContent = ` / ${statusValue(metric.limit, metric.unit)}`;
   values.append(used, limit);
@@ -784,7 +784,32 @@ function quotaCard(metric) {
   source.target = "_blank";
   source.rel = "noopener noreferrer";
   source.textContent = t("officialQuotaSource");
-  card.append(head, values, progress, source);
+  card.append(head, values, progress);
+  if (metric.estimated) {
+    const estimate = document.createElement("p");
+    estimate.className = "quota-note";
+    estimate.textContent = t("estimatedLowerBound");
+    card.append(estimate);
+  }
+  card.append(source);
+  return card;
+}
+
+function resourceCard(resource) {
+  const card = document.createElement("article");
+  card.className = "resource-card";
+  const copy = document.createElement("div");
+  const title = document.createElement("h3");
+  title.textContent = t(resource.id);
+  const detail = document.createElement("p");
+  detail.textContent = t(`${resource.id}Detail`, { count: resource.value });
+  copy.append(title, detail);
+  const source = document.createElement("a");
+  source.href = resource.source;
+  source.target = "_blank";
+  source.rel = "noopener noreferrer";
+  source.textContent = t("officialResourceSource");
+  card.append(copy, source);
   return card;
 }
 
@@ -809,6 +834,7 @@ async function loadSystemStatus() {
       overviewCard(t("storedImages"), data.images.objects, formatBytes(data.images.bytes)),
     );
     $("#quotaGrid").replaceChildren(...data.metrics.map(quotaCard));
+    $("#resourceGrid").replaceChildren(...(data.resources || []).map(resourceCard));
     $("#quotaUpdated").textContent = t("updatedAt", { date: formatDate(data.generatedAt) });
     if (!data.analyticsAvailable) {
       $("#statusNotice").hidden = false;
@@ -818,6 +844,7 @@ async function loadSystemStatus() {
     $("#systemHealthText").textContent = t("statusLoadFailed");
     $("#statusOverview").replaceChildren();
     $("#quotaGrid").replaceChildren();
+    $("#resourceGrid").replaceChildren();
   }
 }
 

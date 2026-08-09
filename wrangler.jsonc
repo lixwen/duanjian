@@ -7,7 +7,10 @@
     "CLOUDFLARE_ACCOUNT_ID": "d1665159130e619da07e405470778702",
     "WORKER_SCRIPT_NAME": "duanjian",
     "KV_NAMESPACE_ID": "d987009994e047668eee293842a25817",
-    "R2_BUCKET_NAME": "duanjian-images"
+    "R2_BUCKET_NAME": "duanjian-images",
+    "CRON_TRIGGER_COUNT": "1",
+    "RATE_LIMIT_POLICY_COUNT": "2",
+    "WORKERS_LOGS_ENABLED": "true"
   },
   "kv_namespaces": [
     {

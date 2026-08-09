@@ -1,9 +1,12 @@
-const STATUS_CACHE_KEY = "system:status:v1";
+const STATUS_CACHE_KEY = "system:status:v3";
 const STATUS_CACHE_SECONDS = 300;
 const GRAPHQL_ENDPOINT = "https://api.cloudflare.com/client/v4/graphql";
 
 const FREE_LIMITS = {
   workerRequests: 100_000,
+  workerLogs: 200_000,
+  staticAssetFiles: 20_000,
+  cronTriggers: 5,
   kvReads: 100_000,
   kvWrites: 1_000,
   kvDeletes: 1_000,
@@ -29,20 +32,31 @@ const R2_CLASS_B = new Set([
 export interface StatusEnv {
   DOCS: KVNamespace;
   IMAGES: R2Bucket;
+  ASSETS?: Fetcher;
   CLOUDFLARE_ACCOUNT_ID?: string;
   CLOUDFLARE_ANALYTICS_TOKEN?: string;
   KV_NAMESPACE_ID?: string;
   R2_BUCKET_NAME?: string;
   WORKER_SCRIPT_NAME?: string;
+  CRON_TRIGGER_COUNT?: string;
+  RATE_LIMIT_POLICY_COUNT?: string;
+  WORKERS_LOGS_ENABLED?: string;
 }
 
 export interface StatusMetric {
   id: string;
   used: number | null;
   limit: number;
-  unit: "requests" | "operations" | "bytes";
+  unit: "requests" | "operations" | "bytes" | "events" | "files" | "triggers";
   period: "day" | "month" | "current";
   scope: "project" | "resource";
+  source: string;
+  estimated?: boolean;
+}
+
+export interface StatusResource {
+  id: string;
+  value: number;
   source: string;
 }
 
@@ -62,6 +76,7 @@ export interface SystemStatus {
     bytes: number;
   };
   metrics: StatusMetric[];
+  resources: StatusResource[];
   notices: string[];
 }
 
@@ -135,7 +150,7 @@ async function graphql(
 async function workerAnalytics(env: StatusEnv, start: string, end: string): Promise<number | null> {
   if (!env.WORKER_SCRIPT_NAME) return null;
   const account = await graphql(env, `
-    query WorkerUsage($accountTag: string!, $start: Time!, $end: Time!, $script: string!) {
+    query WorkerUsage($accountTag: string!, $start: string!, $end: string!, $script: string!) {
       viewer { accounts(filter: { accountTag: $accountTag }) {
         workersInvocationsAdaptive(
           limit: 10000
@@ -153,23 +168,23 @@ async function workerAnalytics(env: StatusEnv, start: string, end: string): Prom
   return sumField(rows(account, "workersInvocationsAdaptive"), "requests");
 }
 
-async function kvAnalytics(env: StatusEnv, date: string): Promise<Pick<AnalyticsValues, "kvReads" | "kvWrites" | "kvDeletes" | "kvLists" | "kvStorage">> {
+async function kvAnalytics(env: StatusEnv, start: string, end: string): Promise<Pick<AnalyticsValues, "kvReads" | "kvWrites" | "kvDeletes" | "kvLists" | "kvStorage">> {
   const empty = { kvReads: null, kvWrites: null, kvDeletes: null, kvLists: null, kvStorage: null };
   if (!env.KV_NAMESPACE_ID) return empty;
   const account = await graphql(env, `
-    query KvUsage($accountTag: string!, $namespaceId: string!, $date: Date!) {
+    query KvUsage($accountTag: string!, $namespaceId: string!, $start: Date!, $end: Date!) {
       viewer { accounts(filter: { accountTag: $accountTag }) {
         kvOperationsAdaptiveGroups(
           limit: 10000
-          filter: { date: $date, namespaceId: $namespaceId }
+          filter: { date_geq: $start, date_leq: $end, namespaceId: $namespaceId }
         ) { dimensions { actionType } sum { requests } }
         kvStorageAdaptiveGroups(
-          limit: 1
-          filter: { date: $date, namespaceId: $namespaceId }
+          limit: 10000
+          filter: { date_geq: $start, date_leq: $end, namespaceId: $namespaceId }
         ) { max { byteCount } }
       } }
     }
-  `, { accountTag: env.CLOUDFLARE_ACCOUNT_ID, namespaceId: env.KV_NAMESPACE_ID, date });
+  `, { accountTag: env.CLOUDFLARE_ACCOUNT_ID, namespaceId: env.KV_NAMESPACE_ID, start, end });
   if (!account) return empty;
   const operations = rows(account, "kvOperationsAdaptiveGroups");
   const counts = { read: 0, write: 0, delete: 0, list: 0 };
@@ -237,7 +252,7 @@ async function analytics(env: StatusEnv, now: Date): Promise<AnalyticsValues> {
   const monthStart = `${day.slice(0, 8)}01T00:00:00.000Z`;
   const [worker, kv, r2] = await Promise.allSettled([
     workerAnalytics(env, dayStart, end),
-    kvAnalytics(env, day),
+    kvAnalytics(env, day, day),
     r2Analytics(env, monthStart, end),
   ]);
   const kvValue = kv.status === "fulfilled" ? kv.value : { kvReads: null, kvWrites: null, kvDeletes: null, kvLists: null, kvStorage: null };
@@ -273,8 +288,25 @@ async function countR2(bucket: R2Bucket): Promise<{ objects: number; bytes: numb
   return { objects, bytes };
 }
 
-function metric(id: string, used: number | null, limit: number, unit: StatusMetric["unit"], period: StatusMetric["period"], scope: StatusMetric["scope"], source: string): StatusMetric {
-  return { id, used, limit, unit, period, scope, source };
+async function countStaticAssets(assets?: Fetcher): Promise<number | null> {
+  if (!assets) return null;
+  try {
+    const response = await assets.fetch("https://assets.internal/resource-manifest.json");
+    if (!response.ok) return null;
+    const manifest = await response.json() as { staticAssetFiles?: unknown };
+    return finiteNumber(manifest.staticAssetFiles);
+  } catch {
+    return null;
+  }
+}
+
+function configuredCount(value: string | undefined, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function metric(id: string, used: number | null, limit: number, unit: StatusMetric["unit"], period: StatusMetric["period"], scope: StatusMetric["scope"], source: string, estimated = false): StatusMetric {
+  return { id, used, limit, unit, period, scope, source, ...(estimated ? { estimated } : {}) };
 }
 
 export async function getSystemStatus(env: StatusEnv): Promise<SystemStatus> {
@@ -283,11 +315,12 @@ export async function getSystemStatus(env: StatusEnv): Promise<SystemStatus> {
 
   const now = new Date();
   const analyticsConfigured = Boolean(env.CLOUDFLARE_ACCOUNT_ID && env.CLOUDFLARE_ANALYTICS_TOKEN);
-  const [markdown, conversations, images, usage] = await Promise.all([
+  const [markdown, conversations, images, usage, staticAssetFiles] = await Promise.all([
     countKvPrefix(env.DOCS, "doc:"),
     countKvPrefix(env.DOCS, "conv:"),
     countR2(env.IMAGES),
     analytics(env, now),
+    countStaticAssets(env.ASSETS),
   ]);
   const analyticsAvailable = Object.values(usage).every((value) => value !== null);
   const notices = !analyticsConfigured
@@ -303,6 +336,9 @@ export async function getSystemStatus(env: StatusEnv): Promise<SystemStatus> {
     images,
     metrics: [
       metric("workerRequests", usage.workerRequests, FREE_LIMITS.workerRequests, "requests", "day", "project", "https://developers.cloudflare.com/workers/platform/pricing/"),
+      ...(env.WORKERS_LOGS_ENABLED === "false" ? [] : [
+        metric("workerLogs", usage.workerRequests, FREE_LIMITS.workerLogs, "events", "day", "project", "https://developers.cloudflare.com/workers/observability/logs/workers-logs/", true),
+      ]),
       metric("kvReads", usage.kvReads, FREE_LIMITS.kvReads, "operations", "day", "resource", "https://developers.cloudflare.com/kv/platform/pricing/"),
       metric("kvWrites", usage.kvWrites, FREE_LIMITS.kvWrites, "operations", "day", "resource", "https://developers.cloudflare.com/kv/platform/pricing/"),
       metric("kvDeletes", usage.kvDeletes, FREE_LIMITS.kvDeletes, "operations", "day", "resource", "https://developers.cloudflare.com/kv/platform/pricing/"),
@@ -311,7 +347,14 @@ export async function getSystemStatus(env: StatusEnv): Promise<SystemStatus> {
       metric("r2Storage", images.bytes, FREE_LIMITS.r2Storage, "bytes", "current", "resource", "https://developers.cloudflare.com/r2/pricing/"),
       metric("r2ClassA", usage.r2ClassA, FREE_LIMITS.r2ClassA, "operations", "month", "resource", "https://developers.cloudflare.com/r2/pricing/"),
       metric("r2ClassB", usage.r2ClassB, FREE_LIMITS.r2ClassB, "operations", "month", "resource", "https://developers.cloudflare.com/r2/pricing/"),
+      metric("staticAssetFiles", staticAssetFiles, FREE_LIMITS.staticAssetFiles, "files", "current", "project", "https://developers.cloudflare.com/workers/static-assets/platform/limits/"),
+      metric("cronTriggers", configuredCount(env.CRON_TRIGGER_COUNT, 1), FREE_LIMITS.cronTriggers, "triggers", "current", "resource", "https://developers.cloudflare.com/workers/platform/limits/"),
     ],
+    resources: [{
+      id: "rateLimitPolicies",
+      value: configuredCount(env.RATE_LIMIT_POLICY_COUNT, 2),
+      source: "https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/",
+    }],
     notices,
   };
   await env.DOCS.put(STATUS_CACHE_KEY, JSON.stringify(snapshot), { expirationTtl: STATUS_CACHE_SECONDS * 2 });

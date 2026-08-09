@@ -100,24 +100,27 @@ button, a { -webkit-tap-highlight-color: transparent; }
 
 .utility-menu-trigger {
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   place-items: center;
-  border: 1px solid rgba(32, 32, 30, .07);
+  border: 0;
   border-radius: 50%;
-  color: #777670;
-  background: rgba(251, 251, 250, .82);
+  color: #9a9993;
+  background: transparent;
   cursor: pointer;
-  backdrop-filter: blur(12px);
-  transition: color .16s ease, background .16s ease, border-color .16s ease;
+  transition: color .16s ease, background .16s ease;
 }
 
 .utility-menu-trigger:hover,
 .utility-menu-trigger[aria-expanded="true"] {
-  border-color: rgba(32, 32, 30, .10);
   color: var(--ink);
-  background: #f2f1ed;
+  background: rgba(32, 32, 30, .055);
+}
+
+.utility-menu-trigger:focus-visible {
+  outline: 2px solid rgba(32, 32, 30, .26);
+  outline-offset: 2px;
 }
 
 .utility-trigger-icon { display: block; }

@@ -6,6 +6,9 @@
 - Desktop implementation: `.audit/notelet-header/06-editor-toolbar-menu-final.png`
 - Mobile implementation: `.audit/notelet-header/05-editor-toolbar-mobile-menu-fixed.png`
 - Focused comparison: `.audit/notelet-header/07-reference-vs-final.png`
+- More-button feedback: `.audit/notelet-header/08-utility-button-feedback.png`
+- Refined closed/open states: `.audit/notelet-header/09-utility-button-refined-closed.png`, `.audit/notelet-header/10-utility-button-refined-open.png`
+- More-button comparison: `.audit/notelet-header/11-utility-button-feedback-vs-final.png`
 - Desktop viewport: 1440 × 900 CSS px at 1×; screenshot: 1440 × 900 px
 - Mobile viewport: 390 × 844 CSS px at 1×; screenshot: 390 × 844 px
 - Verified state: editor toolbar with the utility menu open
@@ -25,6 +28,7 @@
 2. The trigger was increased to 44 × 44 px. The mobile shell expression was corrected to `min(760px, calc(100% - 36px))`.
 3. The drag overlay was constrained to the shell on mobile, eliminating the remaining 2 px horizontal overflow.
 4. Final desktop and mobile captures show no overlap, clipping, horizontal overflow, or hierarchy regression.
+5. The outlined circular more button was visually too prominent beside Publish. Its visible ring was removed, the icon was strengthened slightly, and interaction feedback is now limited to a quiet hover/open fill while retaining the mobile 44 px hit target.
 
 ## Severity check
 

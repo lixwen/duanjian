@@ -3,7 +3,7 @@ import {
   convertCodexThread,
   parseTtl,
   redactSecrets,
-} from "../skill-assets/notelet-publish/scripts/duanjian.mjs";
+} from "../skill-assets/notelet-publish/scripts/notelet.mjs";
 
 describe("bundled Codex conversation exporter", () => {
   it("keeps visible content and excludes the operational share turn", () => {

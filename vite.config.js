@@ -15,7 +15,7 @@ export default defineConfig({
   plugins: [{
     name: "notelet-resource-manifest",
     generateBundle() {
-      for (const file of ["duanjian.mjs", "publish.mjs"]) {
+      for (const file of ["notelet.mjs", "publish.mjs"]) {
         this.emitFile({
           type: "asset",
           fileName: `skills/notelet-publish/scripts/${file}`,

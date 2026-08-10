@@ -57,7 +57,7 @@ const AGENT_SKILL_URL = "/skills/notelet-publish/SKILL.md";
 const AGENT_SKILL_NAME = "notelet-publish";
 const AGENT_SKILL_FILES = [
   { path: "SKILL.md", url: AGENT_SKILL_URL },
-  { path: "scripts/duanjian.mjs", url: "/skills/notelet-publish/scripts/duanjian.mjs" },
+  { path: "scripts/notelet.mjs", url: "/skills/notelet-publish/scripts/notelet.mjs" },
   { path: "scripts/publish.mjs", url: "/skills/notelet-publish/scripts/publish.mjs" },
 ];
 const agentDirectories = {

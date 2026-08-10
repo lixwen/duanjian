@@ -29,7 +29,7 @@ describe("agent skill setup page", () => {
 
   it("writes through an explicit directory picker and keeps manual fallbacks", () => {
     expect(app).toContain('"showDirectoryPicker" in window');
-    expect(app).toContain('path: "scripts/duanjian.mjs"');
+    expect(app).toContain('path: "scripts/notelet.mjs"');
     expect(app).toContain('path: "scripts/publish.mjs"');
     expect(app).toContain("getDirectoryHandle(AGENT_SKILL_NAME, { create: true })");
     expect(app).toContain("writeAgentSkillFile(directory, file.path, file.content)");

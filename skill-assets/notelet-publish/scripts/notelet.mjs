@@ -222,7 +222,7 @@ class AppServerClient {
   }
 
   async initialize() {
-    await this.request("initialize", { clientInfo: { name: "duanjian-share", version: "0.3.0" } });
+    await this.request("initialize", { clientInfo: { name: "notelet-share", version: "0.3.0" } });
     this.notify("initialized");
   }
 

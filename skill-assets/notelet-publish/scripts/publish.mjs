@@ -6,7 +6,7 @@ import {
   publishCodexThread,
   publishConversation,
   publishMarkdownFile,
-} from "./duanjian.mjs";
+} from "./notelet.mjs";
 
 function usage(message) {
   if (message) console.error(`Error: ${message}\n`);

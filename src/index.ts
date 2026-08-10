@@ -6,6 +6,7 @@ import {
   type ConversationTurn,
 } from "./conversation";
 import { getSystemStatus, type StatusEnv } from "./status";
+import { NOTELET_SKILL_MARKDOWN } from "./notelet-skill";
 
 interface Env extends StatusEnv {
   ASSETS: Fetcher;
@@ -619,6 +620,12 @@ export default {
       }
       if (request.method === "GET" && url.pathname === "/llms.txt") {
         return withSecurity(publicText(llmsText(url.origin), "text/plain"));
+      }
+      if (request.method === "GET" && url.pathname === "/skills/notelet-publish/SKILL.md") {
+        const response = publicText(NOTELET_SKILL_MARKDOWN, "text/markdown");
+        response.headers.set("Content-Disposition", 'inline; filename="SKILL.md"');
+        response.headers.set("X-Robots-Tag", "noindex, nofollow");
+        return withSecurity(response);
       }
       if (url.pathname.startsWith("/api/")) {
         const response = withSecurity(await handleApi(request, env, url));

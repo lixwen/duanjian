@@ -19,6 +19,7 @@ describe("topbar utility menus", () => {
     expect(html.match(/data-utility-trigger/g)).toHaveLength(3);
     expect(html.match(/role="menu"/g)).toHaveLength(3);
     expect(html.match(/data-language-toggle/g)).toHaveLength(3);
+    expect(html.match(/href="\/agents"/g)).toHaveLength(3);
     expect(app).toContain('event.key !== "Escape"');
     expect(app).toContain('event.key === "ArrowDown"');
   });

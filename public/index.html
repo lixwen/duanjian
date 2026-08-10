@@ -50,6 +50,11 @@
               <span data-menu-label="status">状态</span>
               <ph-caret-right class="utility-menu-trailing" size="13" aria-hidden="true"></ph-caret-right>
             </a>
+            <a class="utility-menu-item" href="/agents" role="menuitem">
+              <ph-plugs-connected class="utility-menu-icon" size="17" aria-hidden="true"></ph-plugs-connected>
+              <span data-menu-label="agents">Agent 接入</span>
+              <ph-caret-right class="utility-menu-trailing" size="13" aria-hidden="true"></ph-caret-right>
+            </a>
           </div>
         </div>
       </div>
@@ -71,6 +76,11 @@
               <span data-menu-label="status">状态</span>
               <ph-caret-right class="utility-menu-trailing" size="13" aria-hidden="true"></ph-caret-right>
             </a>
+            <a class="utility-menu-item" href="/agents" role="menuitem">
+              <ph-plugs-connected class="utility-menu-icon" size="17" aria-hidden="true"></ph-plugs-connected>
+              <span data-menu-label="agents">Agent 接入</span>
+              <ph-caret-right class="utility-menu-trailing" size="13" aria-hidden="true"></ph-caret-right>
+            </a>
           </div>
         </div>
       </div>
@@ -86,6 +96,11 @@
               <span data-menu-label="language">语言</span>
               <span class="utility-menu-value" data-language-target>English</span>
             </button>
+            <a class="utility-menu-item" href="/agents" role="menuitem">
+              <ph-plugs-connected class="utility-menu-icon" size="17" aria-hidden="true"></ph-plugs-connected>
+              <span data-menu-label="agents">Agent 接入</span>
+              <ph-caret-right class="utility-menu-trailing" size="13" aria-hidden="true"></ph-caret-right>
+            </a>
           </div>
         </div>
       </div>
@@ -207,6 +222,63 @@
         </section>
         <p class="status-notice" id="statusNotice" hidden></p>
         <p class="status-footnote" id="statusFootnote">免费额度以 Cloudflare 官方公开标准为准；Workers 请求量显示本项目用量，账户级额度可能由同账户的其他 Worker 共享。</p>
+      </section>
+
+      <section class="agent-setup" id="agentSetupView" hidden aria-labelledby="agentSetupTitle">
+        <header class="agent-setup-head">
+          <p class="eyebrow" id="agentSetupEyebrow">AGENT SKILLS</p>
+          <h1 id="agentSetupTitle">把短笺装进你的 Agent</h1>
+          <p id="agentSetupDescription">安装后，直接让 Agent 把 Markdown 发布为短链接。选择工具和作用范围，短笺会生成对应的安装方式。</p>
+        </header>
+
+        <div class="agent-setup-grid">
+          <div class="agent-choice-panel">
+            <p class="agent-step-label"><span>01</span><span id="agentChooseLabel">选择 Agent</span></p>
+            <div class="agent-options" role="group" aria-labelledby="agentChooseLabel">
+              <button class="agent-option is-selected" type="button" data-agent="codex" aria-pressed="true">
+                <span class="agent-monogram" aria-hidden="true">CX</span><span><strong>Codex</strong><small>OpenAI</small></span>
+              </button>
+              <button class="agent-option" type="button" data-agent="claude" aria-pressed="false">
+                <span class="agent-monogram" aria-hidden="true">CL</span><span><strong>Claude Code</strong><small>Anthropic</small></span>
+              </button>
+              <button class="agent-option" type="button" data-agent="cursor" aria-pressed="false">
+                <span class="agent-monogram" aria-hidden="true">CU</span><span><strong>Cursor</strong><small>Editor & CLI</small></span>
+              </button>
+            </div>
+
+            <p class="agent-step-label scope-step"><span>02</span><span id="agentScopeLabel">选择范围</span></p>
+            <div class="scope-options" role="group" aria-labelledby="agentScopeLabel">
+              <button class="scope-option is-selected" type="button" data-scope="user" aria-pressed="true">
+                <strong id="agentUserScope">所有项目</strong><small id="agentUserScopeHelp">安装到当前用户，随处可用</small>
+              </button>
+              <button class="scope-option" type="button" data-scope="project" aria-pressed="false">
+                <strong id="agentProjectScope">当前项目</strong><small id="agentProjectScopeHelp">随仓库共享，团队可复用</small>
+              </button>
+            </div>
+          </div>
+
+          <div class="agent-install-panel">
+            <p class="agent-step-label"><span>03</span><span id="agentInstallLabel">安装 Skill</span></p>
+            <div class="install-receipt">
+              <div class="install-target-row"><span id="agentTargetLabel">目标目录</span><code id="agentTargetPath">~/.agents/skills</code></div>
+              <div class="install-package-row"><span class="install-package-mark" aria-hidden="true">N</span><span><strong>notelet-publish</strong><small id="agentPackageHelp">发布 Markdown，并返回可分享短链</small></span><span class="install-file-count" id="agentFileCount">1 个文件</span></div>
+              <p class="install-permission-note"><span aria-hidden="true">↳</span><span id="agentPermissionNote">浏览器会先请求目录权限，只写入上面的 Skill 文件夹。</span></p>
+            </div>
+            <button class="agent-install-button" id="agentInstallButton" type="button"><span id="agentInstallButtonText">选择目录并安装</span><span aria-hidden="true">↗</span></button>
+            <p class="agent-install-status" id="agentInstallStatus" role="status" aria-live="polite"></p>
+
+            <details class="manual-install">
+              <summary id="agentManualTitle">或者使用命令安装</summary>
+              <div class="command-box"><code id="agentInstallCommand"></code><button id="agentCopyCommand" type="button">复制</button></div>
+              <button class="agent-download-button" id="agentDownloadSkill" type="button">下载 SKILL.md</button>
+            </details>
+          </div>
+        </div>
+
+        <footer class="agent-trust-note">
+          <span id="agentTrustTitle">本地优先</span>
+          <p id="agentTrustBody">目录授权仅发生在当前浏览器中；短笺不会读取、上传或保存你目录中的其他文件。</p>
+        </footer>
       </section>
     </main>
 

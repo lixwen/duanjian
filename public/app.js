@@ -2,6 +2,7 @@ import "./styles.css";
 import "@phosphor-icons/webcomponents/PhCaretRight";
 import "@phosphor-icons/webcomponents/PhDotsThree";
 import "@phosphor-icons/webcomponents/PhGlobeSimple";
+import "@phosphor-icons/webcomponents/PhPlugsConnected";
 import "@phosphor-icons/webcomponents/PhPulse";
 import { applyStaticTranslations, createTranslator, detectLocale, translateServerError } from "./i18n.js";
 
@@ -20,6 +21,7 @@ const elements = {
   conversationFeed: $("#conversationFeed"),
   statusView: $("#statusView"),
   systemStatusView: $("#systemStatusView"),
+  agentSetupView: $("#agentSetupView"),
   titleInput: $("#titleInput"),
   authorInput: $("#authorInput"),
   markdownInput: $("#markdownInput"),
@@ -51,6 +53,15 @@ let mermaidRendererPromise;
 let mermaidRendererFrame;
 let mermaidRequestId = 0;
 const mermaidRequests = new Map();
+const AGENT_SKILL_URL = "/skills/notelet-publish/SKILL.md";
+const AGENT_SKILL_NAME = "notelet-publish";
+const agentDirectories = {
+  codex: { user: "~/.agents/skills", project: ".agents/skills" },
+  claude: { user: "~/.claude/skills", project: ".claude/skills" },
+  cursor: { user: "~/.cursor/skills", project: ".cursor/skills" },
+};
+let selectedAgent = "codex";
+let selectedAgentScope = "user";
 
 function showToast(message) {
   clearTimeout(toastTimer);
@@ -991,6 +1002,99 @@ async function loadSystemStatus() {
   }
 }
 
+function agentInstallPath() {
+  return agentDirectories[selectedAgent][selectedAgentScope];
+}
+
+function agentInstallCommand() {
+  const root = agentInstallPath().replace(/^~/, "$HOME");
+  const target = `${root}/${AGENT_SKILL_NAME}`;
+  return `mkdir -p "${target}" && curl -fsSL "${location.origin}${AGENT_SKILL_URL}" -o "${target}/SKILL.md"`;
+}
+
+function updateAgentInstaller() {
+  document.querySelectorAll("[data-agent]").forEach((button) => {
+    const selected = button.dataset.agent === selectedAgent;
+    button.classList.toggle("is-selected", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  });
+  document.querySelectorAll("[data-scope]").forEach((button) => {
+    const selected = button.dataset.scope === selectedAgentScope;
+    button.classList.toggle("is-selected", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  });
+  $("#agentTargetPath").textContent = agentInstallPath();
+  $("#agentInstallCommand").textContent = agentInstallCommand();
+  $("#agentInstallStatus").textContent = "";
+  $("#agentInstallStatus").classList.remove("is-success");
+}
+
+async function fetchAgentSkill() {
+  const response = await fetch(AGENT_SKILL_URL);
+  if (!response.ok) throw new Error(t("agentSkillLoadFailed"));
+  return response.text();
+}
+
+async function installAgentSkill() {
+  const status = $("#agentInstallStatus");
+  if (!("showDirectoryPicker" in window)) {
+    status.textContent = t("agentPickerUnsupported");
+    $("#agentManualTitle").closest("details").open = true;
+    return;
+  }
+
+  const button = $("#agentInstallButton");
+  button.disabled = true;
+  status.textContent = t("agentChooseDirectory", { path: agentInstallPath() });
+  try {
+    const [skill, root] = await Promise.all([
+      fetchAgentSkill(),
+      window.showDirectoryPicker({ mode: "readwrite" }),
+    ]);
+    const directory = await root.getDirectoryHandle(AGENT_SKILL_NAME, { create: true });
+    const file = await directory.getFileHandle("SKILL.md", { create: true });
+    const writable = await file.createWritable();
+    await writable.write(skill);
+    await writable.close();
+    status.textContent = t("agentInstallSuccess", { agent: document.querySelector(`[data-agent="${selectedAgent}"] strong`).textContent });
+    status.classList.add("is-success");
+  } catch (error) {
+    status.classList.remove("is-success");
+    if (error?.name === "AbortError") status.textContent = t("agentInstallCancelled");
+    else status.textContent = error?.message || t("agentInstallFailed");
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function downloadAgentSkill() {
+  try {
+    const skill = await fetchAgentSkill();
+    const url = URL.createObjectURL(new Blob([skill], { type: "text/markdown;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "SKILL.md";
+    link.click();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    $("#agentInstallStatus").textContent = error?.message || t("agentSkillLoadFailed");
+  }
+}
+
+function loadAgentSetup() {
+  hideTableOfContents();
+  document.querySelectorAll(".editor-only, .reader-only").forEach((el) => { el.hidden = true; });
+  document.querySelectorAll(".status-only").forEach((el) => { el.hidden = false; });
+  elements.editorView.hidden = true;
+  elements.readerView.hidden = true;
+  elements.conversationView.hidden = true;
+  elements.statusView.hidden = true;
+  elements.systemStatusView.hidden = true;
+  elements.agentSetupView.hidden = false;
+  document.title = t("agentPageTitle");
+  updateAgentInstaller();
+}
+
 async function loadShare(slug) {
   document.querySelectorAll(".editor-only").forEach((el) => { el.hidden = true; });
   document.querySelectorAll(".reader-only").forEach((el) => { el.hidden = false; });
@@ -1049,6 +1153,25 @@ async function copyText(text) {
 document.querySelectorAll(".mode-button").forEach((button) => {
   button.addEventListener("click", () => setMode(button.dataset.mode));
 });
+
+document.querySelectorAll("[data-agent]").forEach((button) => {
+  button.addEventListener("click", () => {
+    selectedAgent = button.dataset.agent;
+    updateAgentInstaller();
+  });
+});
+document.querySelectorAll("[data-scope]").forEach((button) => {
+  button.addEventListener("click", () => {
+    selectedAgentScope = button.dataset.scope;
+    updateAgentInstaller();
+  });
+});
+$("#agentInstallButton").addEventListener("click", installAgentSkill);
+$("#agentCopyCommand").addEventListener("click", async () => {
+  await navigator.clipboard.writeText(agentInstallCommand());
+  showToast(t("agentCommandCopied"));
+});
+$("#agentDownloadSkill").addEventListener("click", downloadAgentSkill);
 
 function closeUtilityMenu(menu, restoreFocus = false) {
   const trigger = menu.querySelector("[data-utility-trigger]");
@@ -1183,5 +1306,6 @@ $("#slugPrefix").textContent = `${location.host}/`;
 
 const slug = decodeURIComponent(location.pathname.slice(1)).replace(/\/$/, "");
 if (slug === "status") loadSystemStatus();
+else if (slug === "agents") loadAgentSetup();
 else if (slug) loadShare(slug);
 else initializeVisualEditor();

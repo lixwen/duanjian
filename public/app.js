@@ -55,6 +55,11 @@ let mermaidRequestId = 0;
 const mermaidRequests = new Map();
 const AGENT_SKILL_URL = "/skills/notelet-publish/SKILL.md";
 const AGENT_SKILL_NAME = "notelet-publish";
+const AGENT_SKILL_FILES = [
+  { path: "SKILL.md", url: AGENT_SKILL_URL },
+  { path: "scripts/duanjian.mjs", url: "/skills/notelet-publish/scripts/duanjian.mjs" },
+  { path: "scripts/publish.mjs", url: "/skills/notelet-publish/scripts/publish.mjs" },
+];
 const agentDirectories = {
   codex: { user: "~/.agents/skills", project: ".agents/skills" },
   claude: { user: "~/.claude/skills", project: ".claude/skills" },
@@ -1009,7 +1014,10 @@ function agentInstallPath() {
 function agentInstallCommand() {
   const root = agentInstallPath().replace(/^~/, "$HOME");
   const target = `${root}/${AGENT_SKILL_NAME}`;
-  return `mkdir -p "${target}" && curl -fsSL "${location.origin}${AGENT_SKILL_URL}" -o "${target}/SKILL.md"`;
+  const downloads = AGENT_SKILL_FILES.map(({ path, url }) => (
+    `curl -fsSL "${location.origin}${url}" -o "${target}/${path}"`
+  ));
+  return [`mkdir -p "${target}/scripts"`, ...downloads].join(" && ");
 }
 
 function updateAgentInstaller() {
@@ -1029,10 +1037,21 @@ function updateAgentInstaller() {
   $("#agentInstallStatus").classList.remove("is-success");
 }
 
-async function fetchAgentSkill() {
-  const response = await fetch(AGENT_SKILL_URL);
+async function fetchAgentSkillFile(url) {
+  const response = await fetch(url);
   if (!response.ok) throw new Error(t("agentSkillLoadFailed"));
   return response.text();
+}
+
+async function writeAgentSkillFile(root, path, content) {
+  const parts = path.split("/");
+  const filename = parts.pop();
+  let directory = root;
+  for (const part of parts) directory = await directory.getDirectoryHandle(part, { create: true });
+  const file = await directory.getFileHandle(filename, { create: true });
+  const writable = await file.createWritable();
+  await writable.write(content);
+  await writable.close();
 }
 
 async function installAgentSkill() {
@@ -1047,15 +1066,15 @@ async function installAgentSkill() {
   button.disabled = true;
   status.textContent = t("agentChooseDirectory", { path: agentInstallPath() });
   try {
-    const [skill, root] = await Promise.all([
-      fetchAgentSkill(),
+    const [files, root] = await Promise.all([
+      Promise.all(AGENT_SKILL_FILES.map(async ({ path, url }) => ({
+        path,
+        content: await fetchAgentSkillFile(url),
+      }))),
       window.showDirectoryPicker({ mode: "readwrite" }),
     ]);
     const directory = await root.getDirectoryHandle(AGENT_SKILL_NAME, { create: true });
-    const file = await directory.getFileHandle("SKILL.md", { create: true });
-    const writable = await file.createWritable();
-    await writable.write(skill);
-    await writable.close();
+    for (const file of files) await writeAgentSkillFile(directory, file.path, file.content);
     status.textContent = t("agentInstallSuccess", { agent: document.querySelector(`[data-agent="${selectedAgent}"] strong`).textContent });
     status.classList.add("is-success");
   } catch (error) {
@@ -1069,7 +1088,7 @@ async function installAgentSkill() {
 
 async function downloadAgentSkill() {
   try {
-    const skill = await fetchAgentSkill();
+    const skill = await fetchAgentSkillFile(AGENT_SKILL_URL);
     const url = URL.createObjectURL(new Blob([skill], { type: "text/markdown;charset=utf-8" }));
     const link = document.createElement("a");
     link.href = url;

@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
-import { readdirSync, writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 function countFiles(directory) {
@@ -15,6 +15,13 @@ export default defineConfig({
   plugins: [{
     name: "notelet-resource-manifest",
     generateBundle() {
+      for (const file of ["duanjian.mjs", "publish.mjs"]) {
+        this.emitFile({
+          type: "asset",
+          fileName: `skills/notelet-publish/scripts/${file}`,
+          source: readFileSync(resolve(`skill-assets/notelet-publish/scripts/${file}`)),
+        });
+      }
       this.emitFile({
         type: "asset",
         fileName: "resource-manifest.json",

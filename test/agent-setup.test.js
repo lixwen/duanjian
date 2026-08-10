@@ -22,13 +22,22 @@ describe("agent skill setup page", () => {
     expect(app).toContain('cursor: { user: "~/.cursor/skills", project: ".cursor/skills" }');
   });
 
+  it("advertises both AI conversation and Markdown sharing", () => {
+    expect(html).toContain("把当前 AI 对话或 Markdown 发布为短链接");
+    expect(html).toContain("分享 AI 对话或 Markdown，并返回短链");
+  });
+
   it("writes through an explicit directory picker and keeps manual fallbacks", () => {
     expect(app).toContain('"showDirectoryPicker" in window');
+    expect(app).toContain('path: "scripts/duanjian.mjs"');
+    expect(app).toContain('path: "scripts/publish.mjs"');
     expect(app).toContain("getDirectoryHandle(AGENT_SKILL_NAME, { create: true })");
-    expect(app).toContain('getFileHandle("SKILL.md", { create: true })');
+    expect(app).toContain("writeAgentSkillFile(directory, file.path, file.content)");
     expect(app).toContain("createWritable()");
+    expect(app).toContain('mkdir -p "${target}/scripts"');
     expect(html).toContain('id="agentCopyCommand"');
     expect(html).toContain('id="agentDownloadSkill"');
+    expect(html).toContain('id="agentFileCount">3 个文件');
   });
 
   it("keeps the installer responsive without horizontal command overflow", () => {

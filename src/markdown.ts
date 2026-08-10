@@ -24,8 +24,8 @@ renderer.code = ({ text, lang }) => {
   const languageClass = safeLanguage ? ` class="language-${safeLanguage}"` : "";
   return `<pre><code${languageClass}>${escapeHtml(text)}</code></pre>\n`;
 };
-renderer.link = ({ href, title, tokens }) => {
-  const body = markedInstance.parser(tokens);
+renderer.link = function ({ href, title, tokens }) {
+  const body = this.parser.parseInline(tokens);
   const safe = escapeHtml(safeHref(href));
   const titleAttribute = title ? ` title="${escapeHtml(title)}"` : "";
   return `<a href="${safe}"${titleAttribute} rel="noopener noreferrer">${body}</a>`;

@@ -19,6 +19,14 @@ describe("Markdown renderer", () => {
     expect(html).toContain('href="#"');
   });
 
+  it("renders escaped Windows paths in link labels without throwing", () => {
+    const html = renderMarkdown(
+      String.raw`[C:\Users\verno\.codex\skills\notelet-publish](C:\Users\verno\.codex\skills\notelet-publish)`,
+    );
+    expect(html).toContain("C:\\Users\\verno.codex\\skills\\notelet-publish");
+    expect(html).toContain('href="#"');
+  });
+
   it("marks Mermaid fences for safe client-side rendering", () => {
     const html = renderMarkdown("```mermaid\nflowchart LR\n  A --> B\n```");
     expect(html).toContain('class="language-mermaid"');

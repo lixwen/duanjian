@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
 const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+const styles = readFileSync(new URL("../public/styles.css", import.meta.url), "utf8");
 
 describe("topbar utility menus", () => {
   it("keeps language and status out of the primary editor controls", () => {
@@ -20,5 +21,10 @@ describe("topbar utility menus", () => {
     expect(html.match(/data-language-toggle/g)).toHaveLength(3);
     expect(app).toContain('event.key !== "Escape"');
     expect(app).toContain('event.key === "ArrowDown"');
+  });
+
+  it("keeps the mobile utility trigger aligned with the other primary controls", () => {
+    expect(styles).toContain(".utility-menu-trigger { width: 36px; height: 36px; }");
+    expect(styles).toContain("line-height: 0;");
   });
 });

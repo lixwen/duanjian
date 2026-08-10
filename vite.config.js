@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 import { readdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 function countFiles(directory) {
   return readdirSync(directory, { withFileTypes: true }).reduce(
@@ -33,5 +33,11 @@ export default defineConfig({
     outDir: "../dist",
     emptyOutDir: true,
     target: "es2022",
+    rollupOptions: {
+      input: {
+        main: resolve("public/index.html"),
+        mermaidRenderer: resolve("public/mermaid-renderer.html"),
+      },
+    },
   },
 });

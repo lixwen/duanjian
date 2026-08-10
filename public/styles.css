@@ -6,6 +6,8 @@
   --faint: #deddd8;
   --soft: #f1f0ec;
   --accent: #1f1f1d;
+  --content-font-size: 17px;
+  --content-line-height: 1.8;
   --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", "Segoe UI", sans-serif;
   --serif: "SF Pro Display", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", "Segoe UI", sans-serif;
   --mono: ui-monospace, "SFMono-Regular", "SF Mono", "Cascadia Mono", "Noto Sans Mono CJK SC", Consolas, monospace;
@@ -123,7 +125,12 @@ button, a { -webkit-tap-highlight-color: transparent; }
   outline-offset: 2px;
 }
 
-.utility-trigger-icon { display: block; }
+.utility-trigger-icon {
+  display: block;
+  width: 20px;
+  height: 20px;
+  line-height: 0;
+}
 
 .utility-menu-popover {
   position: absolute;
@@ -330,7 +337,7 @@ main { min-height: 100vh; }
   --crepe-font-title: var(--serif);
   --crepe-font-default: var(--serif);
   --crepe-font-code: var(--mono);
-  --crepe-base-font-size: 18px;
+  --crepe-base-font-size: var(--content-font-size);
   background: transparent;
 }
 
@@ -340,27 +347,8 @@ main { min-height: 100vh; }
   outline: 0;
   color: #30302d;
   background: transparent;
-  font-family: var(--serif);
-  font-size: 18px;
-  line-height: 1.72;
   overflow-wrap: anywhere;
 }
-
-.visual-editor .milkdown .ProseMirror > :first-child { margin-top: 0; }
-.visual-editor .milkdown .ProseMirror > :last-child { margin-bottom: 0; }
-.visual-editor .milkdown .ProseMirror h1,
-.visual-editor .milkdown .ProseMirror h2,
-.visual-editor .milkdown .ProseMirror h3 {
-  color: var(--ink);
-  font-family: var(--serif);
-  line-height: 1.18;
-  letter-spacing: -.025em;
-  scroll-margin-top: 96px;
-}
-.visual-editor .milkdown .ProseMirror a { color: inherit; text-underline-offset: 3px; }
-.visual-editor .milkdown .ProseMirror blockquote { color: #6d6c66; border-left-color: #c4c3bd; }
-.visual-editor .milkdown .ProseMirror img { max-width: 100%; border-radius: 3px; }
-.visual-editor .milkdown .ProseMirror pre { border-color: #e3e2dd; background: #f4f3ef; }
 
 .visual-editor .milkdown [data-milkdown-root="true"] {
   min-height: inherit;
@@ -714,18 +702,27 @@ main { min-height: 100vh; }
   font-size: 13px;
 }
 
-.markdown-body {
+.markdown-body,
+.visual-editor .milkdown .ProseMirror {
   color: #30302d;
   font-family: var(--sans);
-  font-size: 17px;
-  line-height: 1.8;
+  font-size: var(--content-font-size);
+  line-height: var(--content-line-height);
   overflow-wrap: anywhere;
 }
 
-.markdown-body > :first-child { margin-top: 0; }
-.markdown-body > :last-child { margin-bottom: 0; }
-.markdown-body h1, .markdown-body h2, .markdown-body h3 {
+.markdown-body > :first-child,
+.visual-editor .milkdown .ProseMirror > :nth-child(1 of :not(.ProseMirror-widget)) { margin-top: 0; }
+.markdown-body > :last-child,
+.visual-editor .milkdown .ProseMirror > :has(+ p > .ProseMirror-trailingBreak) { margin-bottom: 0; }
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.visual-editor .milkdown .ProseMirror h1,
+.visual-editor .milkdown .ProseMirror h2,
+.visual-editor .milkdown .ProseMirror h3 {
   margin: 1.65em 0 .65em;
+  padding: 0;
   color: var(--ink);
   font-family: var(--serif);
   font-weight: 700;
@@ -733,27 +730,62 @@ main { min-height: 100vh; }
   letter-spacing: -.03em;
   scroll-margin-top: 100px;
 }
-.markdown-body h1 { font-size: 1.8em; }
-.markdown-body h2 { font-size: 1.42em; }
-.markdown-body h3 { font-size: 1.15em; }
-.markdown-body p, .markdown-body ul, .markdown-body ol, .markdown-body blockquote { margin: 1.05em 0; }
-.markdown-body a { color: inherit; text-decoration-color: #aaa9a2; text-underline-offset: 3px; }
-.markdown-body a:hover { text-decoration-color: var(--ink); }
-.markdown-body blockquote {
+.markdown-body h1,
+.visual-editor .milkdown .ProseMirror h1 { font-size: 1.8em; }
+.markdown-body h2,
+.visual-editor .milkdown .ProseMirror h2 { font-size: 1.42em; }
+.markdown-body h3,
+.visual-editor .milkdown .ProseMirror h3 { font-size: 1.15em; }
+.markdown-body h4,
+.visual-editor .milkdown .ProseMirror h4 { margin: 1.33em 0; padding: 0; font-family: inherit; font-size: 1em; font-weight: 700; line-height: inherit; }
+.markdown-body h5,
+.visual-editor .milkdown .ProseMirror h5 { margin: 1.67em 0; padding: 0; font-family: inherit; font-size: .83em; font-weight: 700; line-height: inherit; }
+.markdown-body h6,
+.visual-editor .milkdown .ProseMirror h6 { margin: 2.33em 0; padding: 0; font-family: inherit; font-size: .67em; font-weight: 700; line-height: inherit; }
+.markdown-body p,
+.markdown-body ul,
+.markdown-body ol,
+.markdown-body blockquote,
+.visual-editor .milkdown .ProseMirror p,
+.visual-editor .milkdown .ProseMirror ul,
+.visual-editor .milkdown .ProseMirror ol,
+.visual-editor .milkdown .ProseMirror blockquote { margin: 1.05em 0; }
+.markdown-body p,
+.visual-editor .milkdown .ProseMirror p { padding: 0; font-size: 1em; line-height: inherit; }
+.visual-editor .milkdown .milkdown-list-item-block > .list-item:has(> .children > [data-content-dom] > p:first-child) > .label-wrapper {
+  margin-top: 1.05em;
+}
+.markdown-body a,
+.visual-editor .milkdown .ProseMirror a {
+  color: inherit;
+  text-decoration-color: #aaa9a2;
+  text-underline-offset: 3px;
+}
+.markdown-body a:hover,
+.visual-editor .milkdown .ProseMirror a:hover { text-decoration-color: var(--ink); }
+.markdown-body blockquote,
+.visual-editor .milkdown .ProseMirror blockquote {
+  position: static;
   margin-left: 0;
-  padding-left: 1.25em;
+  padding: 0 0 0 1.25em;
   border-left: 2px solid #c4c3bd;
   color: #6d6c66;
   font-style: normal;
 }
-.markdown-body code {
+.visual-editor .milkdown .ProseMirror blockquote::before { display: none; }
+.markdown-body code,
+.visual-editor .milkdown .ProseMirror code {
+  display: inline;
   padding: .13em .32em;
   border-radius: 4px;
+  color: inherit;
   background: #eeede9;
   font-family: var(--mono);
   font-size: .82em;
+  line-height: inherit;
 }
-.markdown-body pre {
+.markdown-body pre,
+.visual-editor .milkdown .ProseMirror pre {
   margin: 1.5em 0;
   padding: 18px 20px;
   overflow-x: auto;
@@ -762,7 +794,8 @@ main { min-height: 100vh; }
   background: #f4f3ef;
   line-height: 1.6;
 }
-.markdown-body pre code { padding: 0; background: transparent; }
+.markdown-body pre code,
+.visual-editor .milkdown .ProseMirror pre code { padding: 0; background: transparent; }
 .markdown-body pre code.hljs { display: block; color: #383833; }
 .markdown-body .hljs-comment,
 .markdown-body .hljs-quote { color: #8c8b84; font-style: italic; }
@@ -800,14 +833,78 @@ main { min-height: 100vh; }
   background: #fff;
   text-align: center;
 }
-.mermaid-diagram svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+.mermaid-diagram img { display: block; width: auto; max-width: 100%; height: auto; margin: 0 auto; }
+.diagram-loading { margin: 0; padding: 22px; color: var(--muted); font-size: 13px; text-align: center; }
 .diagram-error { margin: 1.5em 0; color: var(--muted); font-size: 13px; }
 .diagram-error > p { margin-bottom: 8px; }
-.markdown-body img { display: block; max-width: 100%; margin: 1.7em auto; border-radius: 3px; }
-.markdown-body hr { margin: 2.5em 0; border: 0; text-align: center; }
-.markdown-body hr::after { content: "· · ·"; color: #aaa9a2; letter-spacing: .45em; }
-.markdown-body table { width: 100%; border-collapse: collapse; font-family: var(--sans); font-size: .82em; }
-.markdown-body th, .markdown-body td { padding: 9px 10px; border-bottom: 1px solid #deddd8; text-align: left; }
+.markdown-body img,
+.visual-editor .milkdown .ProseMirror img { display: block; max-width: 100%; margin: 1.7em auto; border-radius: 3px; }
+.markdown-body hr,
+.visual-editor .milkdown .ProseMirror hr {
+  height: auto;
+  margin: 2.5em 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: center;
+}
+.markdown-body hr::after,
+.visual-editor .milkdown .ProseMirror hr::after { content: "· · ·"; color: #aaa9a2; letter-spacing: .45em; }
+.markdown-body table,
+.visual-editor .milkdown .ProseMirror table { width: 100%; border-collapse: collapse; font-family: var(--sans); font-size: .82em; }
+.markdown-body th,
+.markdown-body td,
+.visual-editor .milkdown .ProseMirror th,
+.visual-editor .milkdown .ProseMirror td { padding: 9px 10px; border-bottom: 1px solid #deddd8; text-align: left; }
+.mermaid-renderer-frame {
+  position: fixed;
+  left: -10000px;
+  bottom: 0;
+  width: 1200px;
+  height: 800px;
+  border: 0;
+  pointer-events: none;
+}
+.mermaid-editor-preview {
+  margin: -1em 0 1.5em;
+  overflow: hidden;
+  border: 1px solid #e3e2dd;
+  border-radius: 0 0 8px 8px;
+  background: #fff;
+}
+.visual-editor .milkdown .ProseMirror pre[data-language="mermaid"] { border-radius: 8px 8px 0 0; }
+.visual-editor .milkdown .ProseMirror pre[data-language="mermaid"]:has(+ .mermaid-editor-preview.is-preview-only) { display: none; }
+.visual-editor .milkdown .ProseMirror pre[data-language="mermaid"] + .mermaid-editor-preview.is-preview-only {
+  margin-top: 1.5em;
+  border-radius: 8px;
+}
+.mermaid-editor-preview-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 36px;
+  padding: 0 12px;
+  border-bottom: 1px solid #e8e7e2;
+  color: #8b8a84;
+  background: #f7f6f2;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: .04em;
+}
+.mermaid-editor-preview-toolbar button {
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 5px;
+  color: #686762;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: 0;
+}
+.mermaid-editor-preview-toolbar button:hover { color: var(--ink); background: #ebeae5; }
+.mermaid-editor-preview-canvas .mermaid-diagram { margin: 0; border: 0; border-radius: 0; }
+.mermaid-editor-preview-canvas .diagram-error { margin: 0; padding: 18px 20px; }
 .preview-body { min-height: 52vh; }
 
 .reader-footer {
@@ -937,6 +1034,12 @@ main { min-height: 100vh; }
     margin-right: 32px;
     margin-left: 268px;
   }
+
+  body.has-expanded-toc .product-info {
+    width: min(920px, calc(100% - 300px));
+    margin-right: 32px;
+    margin-left: 268px;
+  }
 }
 
 .product-info {
@@ -944,6 +1047,7 @@ main { min-height: 100vh; }
   margin: 0 auto;
   padding: 76px 0 88px;
   border-top: 1px solid var(--faint);
+  transition: width .18s ease, margin .18s ease;
 }
 .product-intro { max-width: 650px; }
 .product-intro h2, .product-faq h2 {
@@ -965,6 +1069,21 @@ main { min-height: 100vh; }
 .product-faq details p { margin: -4px 0 18px; color: var(--muted); font-size: 13px; line-height: 1.7; }
 .product-links { display: flex; gap: 24px; margin-top: 34px; font-size: 13px; }
 .product-links a, .quota-card a { color: #73726d; text-underline-offset: 3px; }
+
+@media (min-width: 1181px) {
+  body.has-expanded-toc .product-info {
+    margin-right: 0;
+    margin-left: calc(50% - 388px);
+  }
+}
+
+@media (min-width: 961px) and (max-width: 1180px) {
+  body.has-expanded-toc .product-info .feature-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 721px) and (max-width: 960px) {
+  body.has-expanded-toc .product-info .feature-grid { grid-template-columns: 1fr; }
+}
 
 .system-status {
   width: min(960px, calc(100% - 48px));
@@ -1090,12 +1209,10 @@ dialog::backdrop { background: rgba(33,32,29,.18); backdrop-filter: blur(3px); }
   .mode-button { padding: 5px 8px; }
   .quiet-button { padding: 8px 6px; }
   .publish-button { padding: 8px 11px; }
-  .utility-menu-trigger { width: 44px; height: 44px; }
+  .utility-menu-trigger { width: 36px; height: 36px; }
   .editor-shell, .reader-shell, .conversation-shell { width: min(760px, calc(100% - 36px)); padding-top: 105px; }
   .title-input, .reader-title { font-size: 39px; }
   .markdown-input { font-size: 14px; }
-  .visual-editor .milkdown .ProseMirror { font-size: 17px; }
-  .markdown-body { font-size: 17px; }
   .toc-panel { top: 70px; left: 12px; width: min(280px, calc(100vw - 24px)); }
   .toc-toggle { background: rgba(251, 251, 250, .92); box-shadow: 0 3px 12px rgba(32, 32, 30, .08); }
   .reader-footer { flex-direction: column; gap: 8px; }

@@ -47,6 +47,10 @@ let toastTimer;
 let draftTimer;
 let tocScrollHandler = null;
 let editorTocTimer;
+let mermaidRendererPromise;
+let mermaidRendererFrame;
+let mermaidRequestId = 0;
+const mermaidRequests = new Map();
 
 function showToast(message) {
   clearTimeout(toastTimer);
@@ -234,7 +238,9 @@ async function initializeVisualEditor() {
       { toolbar },
       { placeholder },
       { table },
-      { replaceAll },
+      { replaceAll, $prose },
+      { Plugin, PluginKey },
+      { Decoration, DecorationSet },
     ] = await Promise.all([
       import("@milkdown/crepe/builder"),
       import("@milkdown/crepe/feature/cursor"),
@@ -246,6 +252,8 @@ async function initializeVisualEditor() {
       import("@milkdown/crepe/feature/placeholder"),
       import("@milkdown/crepe/feature/table"),
       import("@milkdown/kit/utils"),
+      import("@milkdown/kit/prose/state"),
+      import("@milkdown/kit/prose/view"),
       import("@milkdown/crepe/theme/common/prosemirror.css"),
       import("@milkdown/crepe/theme/common/reset.css"),
       import("@milkdown/crepe/theme/common/block-edit.css"),
@@ -259,6 +267,7 @@ async function initializeVisualEditor() {
       import("@milkdown/crepe/theme/frame.css"),
     ]);
     replaceAllCommand = replaceAll;
+    const mermaidPreview = createMermaidPreviewFeature({ $prose, Plugin, PluginKey, Decoration, DecorationSet });
     crepe = new CrepeBuilder({
       root: elements.visualEditor,
       defaultValue: currentMarkdown,
@@ -309,7 +318,8 @@ async function initializeVisualEditor() {
         text: t("editorPlaceholder"),
         mode: "block",
       })
-      .addFeature(table);
+      .addFeature(table)
+      .addFeature(mermaidPreview);
     crepe.on((listener) => {
       listener.markdownUpdated((_ctx, markdown) => {
         currentMarkdown = normalizeMarkdown(markdown);
@@ -493,6 +503,162 @@ function createRenderedBlock(className, html) {
   return block;
 }
 
+function hashText(value) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function createDiagramError(source) {
+  const error = document.createElement("div");
+  error.className = "diagram-error";
+  const message = document.createElement("p");
+  message.textContent = t("diagramError");
+  const fallback = document.createElement("pre");
+  const code = document.createElement("code");
+  code.textContent = source;
+  fallback.append(code);
+  error.append(message, fallback);
+  return error;
+}
+
+function handleMermaidRendererMessage(event) {
+  if (event.origin !== location.origin || event.source !== mermaidRendererFrame?.contentWindow) return;
+  const data = event.data;
+  if (!data || data.channel !== "notelet-mermaid") return;
+  if (data.type === "ready") {
+    mermaidRendererPromise?.resolve?.();
+    return;
+  }
+  const request = mermaidRequests.get(data.id);
+  if (!request) return;
+  clearTimeout(request.timeout);
+  mermaidRequests.delete(data.id);
+  if (data.error) request.reject(new Error(data.error));
+  else request.resolve(data.svg);
+}
+
+function loadMermaidRenderer() {
+  if (mermaidRendererPromise) return mermaidRendererPromise.promise;
+  let resolveReady;
+  let rejectReady;
+  const promise = new Promise((resolve, reject) => {
+    resolveReady = resolve;
+    rejectReady = reject;
+  });
+  mermaidRendererPromise = { promise, resolve: resolveReady, reject: rejectReady };
+  window.addEventListener("message", handleMermaidRendererMessage);
+  mermaidRendererFrame = document.createElement("iframe");
+  mermaidRendererFrame.className = "mermaid-renderer-frame";
+  mermaidRendererFrame.src = "/mermaid-renderer.html";
+  mermaidRendererFrame.title = t("diagramRenderer");
+  mermaidRendererFrame.tabIndex = -1;
+  mermaidRendererFrame.setAttribute("aria-hidden", "true");
+  mermaidRendererFrame.addEventListener("error", () => rejectReady(new Error(t("diagramRendererFailed"))), { once: true });
+  document.body.append(mermaidRendererFrame);
+  setTimeout(() => rejectReady(new Error(t("diagramRendererFailed"))), 10_000);
+  return promise;
+}
+
+async function renderMermaidSvg(source) {
+  await loadMermaidRenderer();
+  const id = ++mermaidRequestId;
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      mermaidRequests.delete(id);
+      reject(new Error(t("diagramRendererFailed")));
+    }, 10_000);
+    mermaidRequests.set(id, { resolve, reject, timeout });
+    mermaidRendererFrame.contentWindow.postMessage({
+      channel: "notelet-mermaid",
+      type: "render",
+      id,
+      source,
+    }, location.origin);
+  });
+}
+
+async function createMermaidDiagram(source) {
+  const svg = await renderMermaidSvg(source);
+  const diagram = document.createElement("div");
+  diagram.className = "mermaid-diagram";
+  const image = document.createElement("img");
+  image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  image.alt = t("diagram");
+  diagram.append(image);
+  return diagram;
+}
+
+function createMermaidEditorPreview(source) {
+  const preview = document.createElement("section");
+  preview.className = "mermaid-editor-preview";
+  preview.contentEditable = "false";
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "mermaid-editor-preview-toolbar";
+  const label = document.createElement("span");
+  label.textContent = "Mermaid";
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.textContent = t("showDiagramOnly");
+  toggle.addEventListener("mousedown", (event) => event.preventDefault());
+  toggle.addEventListener("click", () => {
+    const previewOnly = preview.classList.toggle("is-preview-only");
+    toggle.textContent = t(previewOnly ? "editDiagramSource" : "showDiagramOnly");
+  });
+  toolbar.append(label, toggle);
+
+  const canvas = document.createElement("div");
+  canvas.className = "mermaid-editor-preview-canvas";
+  const loading = document.createElement("p");
+  loading.className = "diagram-loading";
+  loading.textContent = t("diagramLoading");
+  canvas.append(loading);
+  preview.append(toolbar, canvas);
+
+  createMermaidDiagram(source)
+    .then((diagram) => canvas.replaceChildren(diagram))
+    .catch((error) => {
+      console.error(error);
+      canvas.replaceChildren(createDiagramError(source));
+    });
+  return preview;
+}
+
+function createMermaidPreviewFeature({ $prose, Plugin, PluginKey, Decoration, DecorationSet }) {
+  const key = new PluginKey("notelet-mermaid-preview");
+  const plugin = $prose(() => new Plugin({
+    key,
+    state: {
+      init: (_, state) => buildMermaidDecorations(state.doc, Decoration, DecorationSet),
+      apply: (transaction, decorations) => transaction.docChanged
+        ? buildMermaidDecorations(transaction.doc, Decoration, DecorationSet)
+        : decorations.map(transaction.mapping, transaction.doc),
+    },
+    props: {
+      decorations: (state) => key.getState(state),
+    },
+  }));
+  return (editor) => editor.use(plugin);
+}
+
+function buildMermaidDecorations(doc, Decoration, DecorationSet) {
+  const decorations = [];
+  doc.descendants((node, position) => {
+    if (node.type.name !== "code_block" || node.attrs.language?.toLowerCase() !== "mermaid") return;
+    const source = node.textContent;
+    decorations.push(Decoration.widget(
+      position + node.nodeSize,
+      () => createMermaidEditorPreview(source),
+      { side: -1, key: `mermaid-${position}-${hashText(source)}`, ignoreSelection: true },
+    ));
+  });
+  return DecorationSet.create(doc, decorations);
+}
+
 async function enhanceRenderedMarkdown(root) {
   const mermaidCodeBlocks = [...root.querySelectorAll("pre > code.language-mermaid")];
   const regularCodeBlocks = [...root.querySelectorAll("pre > code:not(.language-mermaid)")];
@@ -514,44 +680,17 @@ async function enhanceRenderedMarkdown(root) {
   }
 
   if (!mermaidCodeBlocks.length) return;
-  const diagramNodes = mermaidCodeBlocks.map((code) => {
-    const diagram = document.createElement("div");
-    diagram.className = "mermaid-diagram";
-    diagram.textContent = code.textContent ?? "";
-    code.parentElement.replaceWith(diagram);
-    return diagram;
-  });
-
-  try {
-    const { default: mermaid } = await import("mermaid");
-    mermaid.initialize({
-      startOnLoad: false,
-      securityLevel: "strict",
-      suppressErrorRendering: true,
-      theme: "neutral",
-      fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
-      flowchart: { htmlLabels: false, useMaxWidth: true },
-    });
-    await mermaid.run({ nodes: diagramNodes, suppressErrors: true });
-    diagramNodes.forEach((diagram) => {
-      diagram.setAttribute("role", "img");
-      diagram.setAttribute("aria-label", t("diagram"));
-    });
-  } catch (error) {
-    console.error(error);
-    diagramNodes.forEach((diagram) => {
-      const source = diagram.textContent ?? "";
-      diagram.className = "diagram-error";
-      diagram.replaceChildren();
-      const message = document.createElement("p");
-      message.textContent = t("diagramError");
-      const fallback = document.createElement("pre");
-      const code = document.createElement("code");
-      code.textContent = source;
-      fallback.append(code);
-      diagram.append(message, fallback);
-    });
-  }
+  await Promise.all(mermaidCodeBlocks.map(async (code) => {
+    const source = code.textContent ?? "";
+    const placeholder = document.createElement("div");
+    code.parentElement.replaceWith(placeholder);
+    try {
+      placeholder.replaceWith(await createMermaidDiagram(source));
+    } catch (error) {
+      console.error(error);
+      placeholder.replaceWith(createDiagramError(source));
+    }
+  }));
 }
 
 function createDisclosure(label, className, children) {

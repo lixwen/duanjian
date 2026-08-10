@@ -81,21 +81,23 @@ function error(message: string, status: number): Response {
   return json({ error: message }, status);
 }
 
-function secureHeaders(headers: Headers): Headers {
+function secureHeaders(headers: Headers, renderer = false): Headers {
   headers.set("X-Content-Type-Options", "nosniff");
-  headers.set("X-Frame-Options", "DENY");
+  headers.set("X-Frame-Options", renderer ? "SAMEORIGIN" : "DENY");
   headers.set("Referrer-Policy", "no-referrer");
   headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   headers.set(
     "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'sha256-a38CekWRaWDBUH6WUFZyJnH9/gXEj5UDX3nu0tSjcyU='; style-src 'self'; img-src 'self' https: data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
+    renderer
+      ? "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'; form-action 'none'"
+      : "default-src 'self'; script-src 'self' 'sha256-a38CekWRaWDBUH6WUFZyJnH9/gXEj5UDX3nu0tSjcyU='; style-src 'self'; img-src 'self' https: data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
   );
   return headers;
 }
 
-function withSecurity(response: Response): Response {
+function withSecurity(response: Response, renderer = false): Response {
   const secured = new Response(response.body, response);
-  secureHeaders(secured.headers);
+  secureHeaders(secured.headers, renderer);
   return secured;
 }
 
@@ -641,9 +643,16 @@ export default {
           })(),
           request,
         );
-      const asset = withSecurity(await env.ASSETS.fetch(assetRequest));
+      const isMermaidRenderer = url.pathname === "/mermaid-renderer"
+        || url.pathname === "/mermaid-renderer.html";
+      const asset = withSecurity(await env.ASSETS.fetch(assetRequest), isMermaidRenderer);
       if (!url.pathname.startsWith("/assets/")) {
-        asset.headers.set("Cache-Control", "no-store, max-age=0");
+        asset.headers.set(
+          "Cache-Control",
+          isMermaidRenderer
+            ? "public, max-age=0, must-revalidate, no-transform"
+            : "no-store, max-age=0",
+        );
         asset.headers.set("X-Robots-Tag", url.pathname === "/" ? "index, follow" : "noindex, nofollow");
       }
       return asset;

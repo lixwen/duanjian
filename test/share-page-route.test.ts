@@ -168,6 +168,9 @@ Safe & "quoted" text.
     );
     expect(html).not.toContain("preview-notelet.workers.dev/dynamic-doc");
     expect(html).toContain('<meta property="og:type" content="article" />');
+    expect(html).toContain('data-share-page="true"');
+    expect(html).toContain("— Notelet</title>");
+    expect(html).not.toContain("— 短笺 Notelet</title>");
     expect(html).toContain(
       'content="Roadmap &quot;R&amp;D&quot; &lt;/title&gt;&lt;script&gt;alert(&#39;title&#39;)&lt;/script&gt;"',
     );

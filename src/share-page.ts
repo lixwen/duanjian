@@ -200,7 +200,7 @@ export function deriveSharePageMetadata(input: SharePageInput): SharePageMetadat
   return {
     kind: input.kind,
     title,
-    pageTitle: `${title} — ${SITE_NAME}`,
+    pageTitle: `${title} — Notelet`,
     description: truncateText(description, MAX_SHARE_DESCRIPTION_LENGTH),
     canonicalUrl: canonicalShareUrl(input.url),
     locale,
@@ -267,6 +267,18 @@ function setHtmlLanguage(html: string, locale: SharePageLocale): string {
   });
 }
 
+function markSharePage(html: string): string {
+  return html.replace(/<html\b[^>]*>/i, (htmlTag) => {
+    if (/\bdata-share-page\s*=/i.test(htmlTag)) {
+      return htmlTag.replace(
+        /\bdata-share-page\s*=\s*(?:"[^"]*"|'[^']*')/i,
+        'data-share-page="true"',
+      );
+    }
+    return htmlTag.replace(/>$/, ' data-share-page="true">');
+  });
+}
+
 /**
  * Rewrites only discoverability metadata in the homepage HTML shell. Scripts,
  * styles, and body markup are otherwise left byte-for-byte intact. Indexing is
@@ -274,7 +286,7 @@ function setHtmlLanguage(html: string, locale: SharePageLocale): string {
  */
 export function renderSharePageHtml(homeHtml: string, metadata: SharePageMetadata): string {
   const locale: SharePageLocale = metadata.locale === "zh-CN" ? "zh-CN" : "en";
-  let html = setHtmlLanguage(homeHtml, locale);
+  let html = markSharePage(setHtmlLanguage(homeHtml, locale));
   const escapedPageTitle = escapeHtml(metadata.pageTitle);
   const titlePattern = /<title\b[^>]*>[\s\S]*?<\/title\s*>/i;
   html = titlePattern.test(html)

@@ -118,7 +118,7 @@ describe("share page HTML shell", () => {
       url: "https://notelet.youcaidi.link/safe-share",
     });
 
-    expect(html).toContain('<html lang="zh-CN">');
+    expect(html).toContain('<html lang="zh-CN" data-share-page="true">');
     expect(html).toContain('<meta name="description" content="第一章 这是 摘要 &amp; 后续内容。" />');
     expect(html).toContain('<link rel="canonical" href="https://notelet.youcaidi.link/safe-share" />');
     expect(html).toContain('<meta property="og:type" content="article" />');
@@ -127,6 +127,8 @@ describe("share page HTML shell", () => {
     expect(html).toContain('<meta property="og:locale:alternate" content="en_US" />');
     expect(html).toContain('<meta name="twitter:card" content="summary" />');
     expect(html).toContain('<meta name="twitter:url" content="https://notelet.youcaidi.link/safe-share" />');
+    expect(html).toContain("— Notelet</title>");
+    expect(html).not.toContain("— 短笺 Notelet</title>");
     expect(html).toContain('content="A&amp;B &quot;Editor&quot; &lt;admin&gt;"');
     expect(html).toContain("研究 &quot;R&amp;D&quot; &lt;script&gt;alert(&#39;title&#39;)&lt;/script&gt; &amp; 结论");
     expect(html).not.toContain("<script>alert('title')</script>");
@@ -142,6 +144,7 @@ describe("share page HTML shell", () => {
 
     expect(html).toContain('<script type="application/ld+json">{"name":"短笺"}</script>');
     expect(html).toContain('<script src="/app.js" type="module"></script>');
+    expect(html).toContain('data-share-page="true"');
     expect(html).toContain('<body><main id="app">preserved page</main></body>');
     expect(html).toContain('<meta name="robots" content="index, follow, max-image-preview:large" />');
     expect(html).not.toContain('content="noindex');

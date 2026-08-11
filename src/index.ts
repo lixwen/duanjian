@@ -108,7 +108,7 @@ function secureHeaders(headers: Headers, renderer = false): Headers {
     "Content-Security-Policy",
     renderer
       ? "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'; form-action 'none'"
-      : "default-src 'self'; script-src 'self' 'sha256-a38CekWRaWDBUH6WUFZyJnH9/gXEj5UDX3nu0tSjcyU='; style-src 'self'; img-src 'self' https: data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
+      : "default-src 'self'; script-src 'self' 'sha256-a38CekWRaWDBUH6WUFZyJnH9/gXEj5UDX3nu0tSjcyU=' 'sha256-gtBBWCeKqMKW3Yy5dMzUQiHcdS9W2V+oIcmBPmfcmPU='; style-src 'self'; img-src 'self' https: data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
   );
   return headers;
 }

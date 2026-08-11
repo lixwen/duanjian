@@ -21,9 +21,18 @@ const TOC_COLLAPSED_KEY = "duanjian-toc-collapsed-v1";
 const LOCALE_KEY = "duanjian-locale-v1";
 const MANAGED_EDIT_KEY = "notelet-managed-edit-v1";
 const FORK_DRAFT_KEY = "notelet-fork-draft-v1";
-const locale = detectLocale(localStorage.getItem(LOCALE_KEY), navigator.language);
+let storedLocale = null;
+try {
+  storedLocale = localStorage.getItem(LOCALE_KEY);
+} catch {
+  // The bootstrap locale still works when browser storage is unavailable.
+}
+const locale = detectLocale(document.documentElement.dataset.locale || storedLocale, navigator.language);
 const t = createTranslator(locale);
 applyStaticTranslations(locale);
+document.documentElement.dataset.locale = locale;
+document.documentElement.dataset.i18nReady = "true";
+document.documentElement.removeAttribute("data-i18n-pending");
 
 const elements = {
   editorView: $("#editorView"),

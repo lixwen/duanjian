@@ -239,6 +239,7 @@ const messages = {
     systemStatusEyebrow: "服务状态",
     systemStatusTitle: "短笺运行状态",
     systemStatusDescription: "Cloudflare 资源用量与公开内容统计。数据最多缓存 5 分钟。",
+    statusLoading: "正在读取…",
     operational: "服务运行正常",
     statusLoadFailed: "暂时无法读取状态",
     totalShares: "全部分享",
@@ -514,6 +515,7 @@ const messages = {
     systemStatusEyebrow: "SERVICE STATUS",
     systemStatusTitle: "Notelet status",
     systemStatusDescription: "Cloudflare resource usage and public content totals. Data may be cached for up to five minutes.",
+    statusLoading: "Loading…",
     operational: "All systems operational",
     statusLoadFailed: "Status is temporarily unavailable",
     totalShares: "All shares",
@@ -605,14 +607,17 @@ export function translateServerError(message, locale) {
 
 export function applyStaticTranslations(locale, root = document) {
   const t = createTranslator(locale);
+  const isSharePage = root.documentElement.dataset.sharePage === "true";
   root.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
-  root.title = t("appTitle");
-  root.querySelector('meta[name="application-name"]')?.setAttribute("content", t("brandName"));
-  root.querySelector('meta[name="description"]')?.setAttribute("content", t("appDescription"));
-  root.querySelector('meta[property="og:title"]')?.setAttribute("content", t("appTitle"));
-  root.querySelector('meta[property="og:description"]')?.setAttribute("content", t("appDescription"));
-  root.querySelector('meta[name="twitter:title"]')?.setAttribute("content", t("appTitle"));
-  root.querySelector('meta[name="twitter:description"]')?.setAttribute("content", t("appDescription"));
+  if (!isSharePage) {
+    root.title = t("appTitle");
+    root.querySelector('meta[name="application-name"]')?.setAttribute("content", t("brandName"));
+    root.querySelector('meta[name="description"]')?.setAttribute("content", t("appDescription"));
+    root.querySelector('meta[property="og:title"]')?.setAttribute("content", t("appTitle"));
+    root.querySelector('meta[property="og:description"]')?.setAttribute("content", t("appDescription"));
+    root.querySelector('meta[name="twitter:title"]')?.setAttribute("content", t("appTitle"));
+    root.querySelector('meta[name="twitter:description"]')?.setAttribute("content", t("appDescription"));
+  }
 
   const textBySelector = {
     ".wordmark span": "brandName",
@@ -683,6 +688,7 @@ export function applyStaticTranslations(locale, root = document) {
     "#systemStatusEyebrow": "systemStatusEyebrow",
     "#systemStatusTitle": "systemStatusTitle",
     "#systemStatusDescription": "systemStatusDescription",
+    "#systemHealthText": "statusLoading",
     "#quotaTitle": "quotaTitle",
     "#resourceTitle": "resourceTitle",
     "#statusFootnote": "statusFootnote",

@@ -601,7 +601,7 @@ function sitemapXml(origin: string): string {
 }
 
 function llmsText(origin: string): string {
-  return `# 短笺 (Notelet)\n\n> 一个开源、极简的 Markdown 文档与 Codex 会话分享工具。\n\n短笺可将 Markdown 文档或结构化 Codex 会话发布为短链接，支持链接有效期、粘贴图片、代码语法高亮、Mermaid 图表与对话式浏览。服务运行在 Cloudflare Workers、KV 和 R2 上。\n\n## Links\n\n- Product: ${origin}/\n- Service status: ${origin}/status\n- Source code: https://github.com/lixwen/duanjian\n\n## Privacy and indexing\n\n公开首页可被搜索引擎索引；随机分享链接和 API 响应通过 X-Robots-Tag 禁止索引。请勿使用短笺发布敏感信息。\n`;
+  return `# 短笺 (Notelet)\n\n> 一个开源、极简的 Markdown 文档与 Codex 会话分享工具。\n\n短笺可将 Markdown 文档或结构化 Codex 会话发布为短链接，支持链接有效期、粘贴图片、代码语法高亮、Mermaid 图表与对话式浏览。服务运行在 Cloudflare Workers、KV 和 R2 上。\n\n## Links\n\n- Product: ${origin}/\n- Service status: ${origin}/status\n- Source code: https://github.com/lixwen/notelet\n\n## Privacy and indexing\n\n公开首页可被搜索引擎索引；随机分享链接和 API 响应通过 X-Robots-Tag 禁止索引。请勿使用短笺发布敏感信息。\n`;
 }
 
 export default {

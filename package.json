@@ -7,11 +7,11 @@
   "author": "lixwen",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/lixwen/duanjian.git"
+    "url": "git+ssh://git@github.com/lixwen/notelet.git"
   },
   "homepage": "https://notelet.youcaidi.link",
   "bugs": {
-    "url": "https://github.com/lixwen/duanjian/issues"
+    "url": "https://github.com/lixwen/notelet/issues"
   },
   "keywords": [
     "markdown",

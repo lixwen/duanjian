@@ -1,15 +1,26 @@
 import "./styles.css";
 import "@phosphor-icons/webcomponents/PhCaretRight";
+import "@phosphor-icons/webcomponents/PhArchive";
 import "@phosphor-icons/webcomponents/PhDotsThree";
 import "@phosphor-icons/webcomponents/PhGlobeSimple";
 import "@phosphor-icons/webcomponents/PhPlugsConnected";
 import "@phosphor-icons/webcomponents/PhPulse";
 import { applyStaticTranslations, createTranslator, detectLocale, translateServerError } from "./i18n.js";
+import { createConversationTurnAnchors, hashText, normalizeConversationSearch } from "./conversation-reader.js";
+import {
+  managedShareFromPublish,
+  normalizeManagedShare,
+  readManagedShares,
+  removeManagedShare,
+  upsertManagedShare,
+} from "./share-management.js";
 
 const $ = (selector) => document.querySelector(selector);
 const DRAFT_KEY = "duanjian-draft-v1";
 const TOC_COLLAPSED_KEY = "duanjian-toc-collapsed-v1";
 const LOCALE_KEY = "duanjian-locale-v1";
+const MANAGED_EDIT_KEY = "notelet-managed-edit-v1";
+const FORK_DRAFT_KEY = "notelet-fork-draft-v1";
 const locale = detectLocale(localStorage.getItem(LOCALE_KEY), navigator.language);
 const t = createTranslator(locale);
 applyStaticTranslations(locale);
@@ -19,9 +30,19 @@ const elements = {
   readerView: $("#readerView"),
   conversationView: $("#conversationView"),
   conversationFeed: $("#conversationFeed"),
+  conversationSearch: $("#conversationSearch"),
+  conversationSearchClear: $("#conversationSearchClear"),
+  conversationSearchStatus: $("#conversationSearchStatus"),
+  conversationNoResults: $("#conversationNoResults"),
+  conversationNoResultsText: $("#conversationNoResultsText"),
+  conversationAnswerToggle: $("#conversationAnswerToggle"),
+  conversationDisclosureToggle: $("#conversationDisclosureToggle"),
   statusView: $("#statusView"),
   systemStatusView: $("#systemStatusView"),
   agentSetupView: $("#agentSetupView"),
+  managedSharesView: $("#managedSharesView"),
+  managedSharesList: $("#managedSharesList"),
+  managedSharesEmpty: $("#managedSharesEmpty"),
   titleInput: $("#titleInput"),
   authorInput: $("#authorInput"),
   markdownInput: $("#markdownInput"),
@@ -30,6 +51,7 @@ const elements = {
   dropZone: $("#dropZone"),
   publishDialog: $("#publishDialog"),
   successDialog: $("#successDialog"),
+  manageShareDialog: $("#manageShareDialog"),
   publishButton: $("#publishButton"),
   confirmPublishButton: $("#confirmPublishButton"),
   ttlSelect: $("#ttlSelect"),
@@ -39,6 +61,7 @@ const elements = {
   tocLabel: $("#tocLabel"),
   tocNav: $("#tocNav"),
   toast: $("#toast"),
+  forkDocumentButton: $("#forkDocumentButton"),
 };
 
 let crepe = null;
@@ -49,6 +72,15 @@ let toastTimer;
 let draftTimer;
 let tocScrollHandler = null;
 let editorTocTimer;
+let currentManagedShare = null;
+let managedSettingsEntry = null;
+let currentManageToken = "";
+let conversationSearchTimer;
+let conversationSearchQuery = "";
+let conversationAnswerOnly = false;
+let conversationTurns = [];
+let conversationAnchorTargets = new Map();
+let conversationLegacyTargets = new Map();
 let mermaidRendererPromise;
 let mermaidRendererFrame;
 let mermaidRequestId = 0;
@@ -93,8 +125,39 @@ function readDraft() {
   }
 }
 
+function readSessionState(key, { remove = false } = {}) {
+  try {
+    const value = JSON.parse(sessionStorage.getItem(key) || "null");
+    if (remove) sessionStorage.removeItem(key);
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+function editorBootstrapState() {
+  const params = new URLSearchParams(location.search);
+  const editingSlug = params.get("editing");
+  if (editingSlug) {
+    const state = readSessionState(MANAGED_EDIT_KEY);
+    const entry = normalizeManagedShare(state?.entry);
+    if (
+      state?.version === 1
+      && state.mode === "manage"
+      && entry?.slug === editingSlug
+      && typeof state.content === "string"
+    ) return { ...state, entry };
+  }
+  if (params.get("fork") === "1") {
+    const state = readSessionState(FORK_DRAFT_KEY, { remove: true });
+    history.replaceState(null, "", "/");
+    if (state?.version === 1 && state.mode === "fork" && typeof state.content === "string") return state;
+  }
+  return null;
+}
+
 function saveDraft() {
-  localStorage.setItem(DRAFT_KEY, JSON.stringify({
+  const draft = {
     version: 1,
     title: elements.titleInput.value,
     author: elements.authorInput.value,
@@ -102,7 +165,20 @@ function saveDraft() {
     ttl: elements.ttlSelect.value,
     slug: elements.slugInput.value,
     updatedAt: Date.now(),
-  }));
+  };
+  try {
+    if (currentManagedShare) {
+      sessionStorage.setItem(MANAGED_EDIT_KEY, JSON.stringify({
+        ...draft,
+        mode: "manage",
+        entry: currentManagedShare,
+      }));
+      return;
+    }
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    // Draft persistence is best effort; publishing and editing continue to work.
+  }
 }
 
 function scheduleDraftSave() {
@@ -232,8 +308,17 @@ async function insertImagesInSource(files) {
   return true;
 }
 
+function updateEditorShareMode() {
+  const editing = Boolean(currentManagedShare);
+  elements.publishButton.textContent = t(editing ? "saveChanges" : "publish");
+  elements.slugInput.disabled = editing;
+  if (editing) document.title = `${currentManagedShare.title || t("managedSharesTitle")} — ${t("brandName")}`;
+}
+
 async function initializeVisualEditor() {
-  const draft = readDraft();
+  const bootstrap = editorBootstrapState();
+  const draft = bootstrap ?? readDraft();
+  currentManagedShare = bootstrap?.mode === "manage" ? bootstrap.entry : null;
   if (draft?.version === 1) {
     elements.titleInput.value = typeof draft.title === "string" ? draft.title : "";
     elements.authorInput.value = typeof draft.author === "string" ? draft.author : "";
@@ -242,6 +327,7 @@ async function initializeVisualEditor() {
     currentMarkdown = typeof draft.content === "string" ? draft.content : "";
   }
   elements.markdownInput.value = currentMarkdown;
+  updateEditorShareMode();
 
   try {
     const [
@@ -367,32 +453,74 @@ async function publish() {
     return;
   }
 
+  const editing = Boolean(currentManagedShare);
+  const title = inferTitleFromMarkdown(content, elements.titleInput.value);
   elements.confirmPublishButton.disabled = true;
-  elements.confirmPublishButton.textContent = t("publishing");
+  elements.confirmPublishButton.textContent = t(editing ? "savingChanges" : "publishing");
   try {
-    const response = await fetch("/api/docs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: inferTitleFromMarkdown(content, elements.titleInput.value),
+    const response = await fetch(
+      editing ? `/api/shares/${encodeURIComponent(currentManagedShare.slug)}` : "/api/docs",
+      {
+        method: editing ? "PATCH" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(editing ? { Authorization: `Bearer ${currentManagedShare.manageToken}` } : {}),
+        },
+        body: JSON.stringify(editing
+          ? { title, author: elements.authorInput.value, content }
+          : {
+            title,
+            author: elements.authorInput.value,
+            content,
+            slug: elements.slugInput.value,
+            ttl: Number(elements.ttlSelect.value),
+          }),
+      },
+    );
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(translateServerError(data.error, locale) || t(editing ? "manageFailed" : "publishFailed"));
+    }
+
+    let managementSaved = true;
+    if (editing) {
+      currentManagedShare = {
+        ...currentManagedShare,
+        title: data.title,
+        author: data.author,
+        updatedAt: data.updatedAt ?? Date.now(),
+        expiresAt: data.expiresAt,
+      };
+      managementSaved = upsertManagedShare(currentManagedShare);
+      currentManageToken = currentManagedShare.manageToken;
+    } else {
+      const entry = managedShareFromPublish(data, {
+        kind: "document",
+        title: title || t("publishedTitle"),
         author: elements.authorInput.value,
-        content,
-        slug: elements.slugInput.value,
-        ttl: Number(elements.ttlSelect.value),
-      }),
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(translateServerError(data.error, locale) || t("publishFailed"));
+      });
+      managementSaved = Boolean(entry && upsertManagedShare(entry));
+      currentManageToken = typeof data.manageToken === "string" ? data.manageToken : "";
+    }
+
     saveDraft();
     $("#shareUrlInput").value = data.url;
     $("#openDocumentLink").href = data.url;
+    $("#successDialog h2").textContent = t(editing ? "savedTitle" : "publishedTitle");
+    $("#successDialog > p:not(.success-management-note)").textContent = t(editing ? "savedHelp" : "publishedHelp");
+    $("#successManagementNote").textContent = t(managementSaved ? "managementStored" : "managementStorageFailed");
+    $("#copyManageTokenButton").hidden = !currentManageToken;
     elements.publishDialog.close();
     elements.successDialog.showModal();
+    if (editing) {
+      updateEditorShareMode();
+      showToast(t("shareUpdated"));
+    }
   } catch (error) {
-    showToast(error.message || t("publishFailed"));
+    showToast(error.message || t(editing ? "manageFailed" : "publishFailed"));
   } finally {
     elements.confirmPublishButton.disabled = false;
-    elements.confirmPublishButton.textContent = t("confirmPublish");
+    elements.confirmPublishButton.textContent = t(editing ? "saveConfirm" : "confirmPublish");
   }
 }
 
@@ -407,6 +535,12 @@ function openPublishDialog() {
     return;
   }
   saveDraft();
+  const editing = Boolean(currentManagedShare);
+  $("#publishCreateFields").hidden = editing;
+  $("#publishDialog .eyebrow").textContent = t(editing ? "saveConfirm" : "publishEyebrow");
+  $("#publishDialog h2").textContent = t(editing ? "saveConfirm" : "publishConfirm");
+  $("#publishDialog .dialog-description").textContent = t(editing ? "saveConfirmHelp" : "publishConfirmHelp");
+  elements.confirmPublishButton.textContent = t(editing ? "saveConfirm" : "confirmPublish");
   elements.publishDialog.showModal();
 }
 
@@ -448,14 +582,17 @@ function renderTableOfContents(items, { label, prefix, navigate, assignElementId
   hideTableOfContents();
   if (items.length < 2) return;
 
-  const tocItems = items.map((item, index) => ({ ...item, tocId: `${prefix}-${index + 1}` }));
+  const tocItems = items.map((item, index) => ({ ...item, tocId: item.tocId || `${prefix}-${index + 1}` }));
   const links = new Map();
+  const elementIds = new Map();
   const fragment = document.createDocumentFragment();
   tocItems.forEach((item) => {
     if (assignElementIds && item.element) item.element.id = item.tocId;
+    if (item.element) elementIds.set(item.element, item.tocId);
     const link = document.createElement("a");
     link.href = `#${item.tocId}`;
     link.dataset.level = String(item.level);
+    if (item.isConversationTurn) link.dataset.conversationTurn = item.tocId;
     link.textContent = item.text;
     link.addEventListener("click", (event) => {
       event.preventDefault();
@@ -476,18 +613,24 @@ function renderTableOfContents(items, { label, prefix, navigate, assignElementId
   const setActive = (id) => {
     links.forEach((link, key) => link.classList.toggle("is-active", key === id));
   };
-  setActive(`${prefix}-1`);
+  let initialHash = "";
+  try {
+    initialHash = decodeURIComponent(location.hash.slice(1));
+  } catch {
+    initialHash = location.hash.slice(1);
+  }
+  setActive(links.has(initialHash) ? initialHash : tocItems[0].tocId);
   const getHeadings = getScrollHeadings ?? (() => tocItems.map((item) => item.element).filter(Boolean));
   tocScrollHandler = () => {
     const headings = getHeadings();
     if (headings.length === 0) return;
     const marker = window.innerHeight * 0.3;
-    const currentIndex = headings.reduce((activeIndex, heading, index) => {
+    const current = headings.reduce((active, heading) => {
       const distance = Math.abs(heading.getBoundingClientRect().top - marker);
-      const activeDistance = Math.abs(headings[activeIndex].getBoundingClientRect().top - marker);
-      return distance < activeDistance ? index : activeIndex;
-    }, 0);
-    setActive(`${prefix}-${currentIndex + 1}`);
+      const activeDistance = Math.abs(active.getBoundingClientRect().top - marker);
+      return distance < activeDistance ? heading : active;
+    }, headings[0]);
+    setActive(elementIds.get(current) || current.id);
   };
   window.addEventListener("scroll", tocScrollHandler, { passive: true });
   tocScrollHandler();
@@ -517,15 +660,6 @@ function createRenderedBlock(className, html) {
   block.className = className;
   block.innerHTML = html;
   return block;
-}
-
-function hashText(value) {
-  let hash = 2166136261;
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return (hash >>> 0).toString(36);
 }
 
 function createDiagramError(source) {
@@ -715,17 +849,228 @@ function createDisclosure(label, className, children) {
   const summary = document.createElement("summary");
   summary.textContent = label;
   details.append(summary, ...children);
+  details.addEventListener("toggle", updateConversationDisclosureControl);
   return details;
 }
 
+function clearConversationHighlights(article) {
+  article.querySelectorAll("mark.conversation-search-match").forEach((mark) => {
+    mark.replaceWith(document.createTextNode(mark.textContent ?? ""));
+  });
+  article.normalize();
+}
+
+function isConversationSearchText(node) {
+  if (!node.data.trim()) return false;
+  const parent = node.parentElement;
+  if (!parent || parent.closest("button, script, style, .conversation-turn-index")) return false;
+  if (conversationAnswerOnly && parent.closest(".conversation-user, .conversation-disclosure")) return false;
+  return Boolean(parent.closest(".conversation-turn-head, .conversation-message, .conversation-disclosure, .conversation-no-answer"));
+}
+
+function highlightConversationTurn(article, query) {
+  clearConversationHighlights(article);
+  if (!query) return 0;
+
+  const walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) => isConversationSearchText(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT,
+  });
+  const textNodes = [];
+  while (walker.nextNode()) textNodes.push(walker.currentNode);
+  let matches = 0;
+
+  textNodes.forEach((node) => {
+    const text = node.data;
+    const searchable = text.toLocaleLowerCase("en");
+    let cursor = 0;
+    let matchIndex = searchable.indexOf(query);
+    if (matchIndex === -1) return;
+
+    const fragment = document.createDocumentFragment();
+    while (matchIndex !== -1) {
+      if (matchIndex > cursor) fragment.append(document.createTextNode(text.slice(cursor, matchIndex)));
+      const mark = document.createElement("mark");
+      mark.className = "conversation-search-match";
+      mark.textContent = text.slice(matchIndex, matchIndex + query.length);
+      fragment.append(mark);
+      matches += 1;
+      cursor = matchIndex + query.length;
+      matchIndex = searchable.indexOf(query, cursor);
+    }
+    if (cursor < text.length) fragment.append(document.createTextNode(text.slice(cursor)));
+    node.replaceWith(fragment);
+  });
+
+  return matches;
+}
+
+function updateConversationTocVisibility() {
+  elements.tocNav.querySelectorAll("a[data-conversation-turn]").forEach((link) => {
+    const article = conversationAnchorTargets.get(link.dataset.conversationTurn);
+    link.hidden = Boolean(article?.hidden);
+  });
+  tocScrollHandler?.();
+}
+
+function updateConversationDisclosureControl() {
+  const disclosures = [...elements.conversationFeed.querySelectorAll(".conversation-disclosure")];
+  const allOpen = disclosures.length > 0 && disclosures.every((details) => details.open);
+  elements.conversationDisclosureToggle.disabled = disclosures.length === 0 || conversationAnswerOnly;
+  elements.conversationDisclosureToggle.textContent = t(allOpen ? "collapseProgress" : "expandProgress");
+  elements.conversationDisclosureToggle.setAttribute("aria-expanded", String(allOpen));
+  elements.conversationDisclosureToggle.setAttribute("aria-label", t(allOpen ? "collapseProgressAria" : "expandProgressAria"));
+}
+
+function applyConversationSearch(rawQuery = elements.conversationSearch.value) {
+  const query = normalizeConversationSearch(rawQuery);
+  const disclosures = [...elements.conversationFeed.querySelectorAll(".conversation-disclosure")];
+  if (!conversationSearchQuery && query) {
+    disclosures.forEach((details) => { details.dataset.searchPreviousOpen = String(details.open); });
+  }
+  if (conversationSearchQuery && !query) {
+    disclosures.forEach((details) => {
+      details.open = details.dataset.searchPreviousOpen === "true";
+      delete details.dataset.searchPreviousOpen;
+    });
+  }
+  conversationSearchQuery = query;
+
+  let visibleTurns = 0;
+  let matches = 0;
+  conversationTurns.forEach(({ article }) => {
+    const turnMatches = highlightConversationTurn(article, query);
+    const visible = !query || turnMatches > 0;
+    article.hidden = !visible;
+    if (visible) visibleTurns += 1;
+    matches += turnMatches;
+    if (query && !conversationAnswerOnly) {
+      article.querySelectorAll(".conversation-disclosure").forEach((details) => {
+        details.open = Boolean(details.querySelector("mark.conversation-search-match"))
+          || details.dataset.searchPreviousOpen === "true";
+      });
+    }
+  });
+
+  const totalTurns = conversationTurns.length;
+  elements.conversationSearchClear.hidden = !query;
+  elements.conversationNoResults.hidden = !query || visibleTurns > 0;
+  elements.conversationNoResultsText.textContent = t("conversationNoResults", { query: rawQuery.trim() });
+  elements.conversationSearchStatus.textContent = query
+    ? t("conversationSearchResults", { matches, visible: visibleTurns, total: totalTurns })
+    : t("conversationVisibleTurns", { visible: visibleTurns, total: totalTurns });
+  updateConversationTocVisibility();
+  updateConversationDisclosureControl();
+}
+
+function clearConversationSearch({ focus = false } = {}) {
+  clearTimeout(conversationSearchTimer);
+  elements.conversationSearch.value = "";
+  applyConversationSearch("");
+  if (focus) elements.conversationSearch.focus();
+}
+
+function toggleAllConversationDisclosures() {
+  const disclosures = [...elements.conversationFeed.querySelectorAll(".conversation-disclosure")];
+  const shouldOpen = !disclosures.every((details) => details.open);
+  disclosures.forEach((details) => {
+    details.open = shouldOpen;
+    if (Object.hasOwn(details.dataset, "searchPreviousOpen")) {
+      details.dataset.searchPreviousOpen = String(shouldOpen);
+    }
+  });
+  updateConversationDisclosureControl();
+}
+
+function setConversationAnswerOnly(answerOnly) {
+  conversationAnswerOnly = answerOnly;
+  elements.conversationFeed.classList.toggle("is-answer-only", answerOnly);
+  elements.conversationAnswerToggle.setAttribute("aria-pressed", String(answerOnly));
+  applyConversationSearch();
+}
+
+function resetConversationReader() {
+  clearTimeout(conversationSearchTimer);
+  conversationSearchQuery = "";
+  conversationAnswerOnly = false;
+  conversationTurns = [];
+  conversationAnchorTargets = new Map();
+  conversationLegacyTargets = new Map();
+  elements.conversationSearch.value = "";
+  elements.conversationSearchClear.hidden = true;
+  elements.conversationNoResults.hidden = true;
+  elements.conversationSearchStatus.textContent = "";
+  elements.conversationFeed.classList.remove("is-answer-only");
+  elements.conversationAnswerToggle.setAttribute("aria-pressed", "false");
+  elements.conversationDisclosureToggle.disabled = true;
+}
+
+function focusConversationTurn(article) {
+  scrollToHeading(article);
+  article.focus({ preventScroll: true });
+}
+
+function readLocationHash() {
+  try {
+    return decodeURIComponent(location.hash.slice(1));
+  } catch {
+    return location.hash.slice(1);
+  }
+}
+
+function navigateToConversationHash() {
+  if (elements.conversationView.hidden || !location.hash) return false;
+  const hash = readLocationHash();
+  const canonicalTarget = conversationAnchorTargets.get(hash);
+  const article = canonicalTarget || conversationLegacyTargets.get(hash);
+  if (!article) return false;
+  if (article.hidden) clearConversationSearch();
+  if (!canonicalTarget) history.replaceState(null, "", `#${article.id}`);
+  focusConversationTurn(article);
+  return true;
+}
+
 function renderConversation(data) {
+  resetConversationReader();
   elements.conversationFeed.replaceChildren();
   const navigation = [];
+  const anchors = createConversationTurnAnchors(data.turns);
 
   data.turns.forEach((turn, index) => {
+    const anchor = anchors[index];
+    const legacyAnchor = `turn-${index + 1}`;
     const article = document.createElement("article");
     article.className = "conversation-turn";
+    article.id = anchor;
+    article.tabIndex = -1;
     article.dataset.turn = String(index + 1);
+    article.dataset.turnId = turn.id;
+
+    const turnHead = document.createElement("header");
+    turnHead.className = "conversation-turn-head";
+    const turnContext = document.createElement("div");
+    turnContext.className = "conversation-turn-context";
+    const turnIndex = document.createElement("span");
+    turnIndex.className = "conversation-turn-index";
+    turnIndex.setAttribute("aria-hidden", "true");
+    turnIndex.textContent = String(index + 1).padStart(2, "0");
+    const turnTitle = document.createElement("h2");
+    turnTitle.className = "conversation-turn-title";
+    turnTitle.id = `${anchor}-title`;
+    turnTitle.textContent = turn.label;
+    article.setAttribute("aria-labelledby", turnTitle.id);
+    turnContext.append(turnIndex, turnTitle);
+    const turnLink = document.createElement("button");
+    turnLink.className = "conversation-turn-link";
+    turnLink.type = "button";
+    turnLink.textContent = t("copyTurnLink");
+    turnLink.setAttribute("aria-label", t("copyTurnLinkAria", { index: index + 1, label: turn.label }));
+    turnLink.addEventListener("click", () => {
+      const url = new URL(location.href);
+      url.hash = anchor;
+      copyText(url.href);
+    });
+    turnHead.append(turnContext, turnLink);
+    article.append(turnHead);
 
     const user = document.createElement("section");
     user.className = "conversation-message conversation-user";
@@ -778,19 +1123,38 @@ function renderConversation(data) {
       article.append(assistant);
     });
 
+    if (turn.answers.length === 0) {
+      article.classList.add("has-no-answer");
+      const noAnswer = document.createElement("p");
+      noAnswer.className = "conversation-no-answer";
+      noAnswer.textContent = t("noFinalAnswer");
+      article.append(noAnswer);
+    }
+
     elements.conversationFeed.append(article);
-    navigation.push({ element: article, level: 1, text: `${String(index + 1).padStart(2, "0")}  ${turn.label}` });
+    conversationTurns.push({ article, anchor, legacyAnchor });
+    conversationAnchorTargets.set(anchor, article);
+    if (!conversationLegacyTargets.has(legacyAnchor)) conversationLegacyTargets.set(legacyAnchor, article);
+    navigation.push({
+      element: article,
+      level: 1,
+      text: `${String(index + 1).padStart(2, "0")}  ${turn.label}`,
+      tocId: anchor,
+      isConversationTurn: true,
+    });
   });
 
   renderTableOfContents(navigation, {
     label: t("conversationToc"),
     prefix: "turn",
     assignElementIds: true,
+    getScrollHeadings: () => conversationTurns.map(({ article }) => article).filter((article) => !article.hidden),
     navigate: (item) => {
-      scrollToHeading(item.element);
       history.replaceState(null, "", `#${item.tocId}`);
+      focusConversationTurn(item.element);
     },
   });
+  applyConversationSearch("");
 }
 
 function getMarkdownHeadings(markdown) {
@@ -1007,6 +1371,198 @@ async function loadSystemStatus() {
   }
 }
 
+async function managedShareRequest(entry, { method = "GET", body } = {}) {
+  const response = await fetch(
+    `/api/shares/${encodeURIComponent(entry.slug)}${method === "GET" ? "?manage=1" : ""}`,
+    {
+      method,
+      headers: {
+        Authorization: `Bearer ${entry.manageToken}`,
+        ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    },
+  );
+  const data = response.status === 204 ? null : await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const failure = new Error(translateServerError(data?.error, locale) || t("manageFailed"));
+    failure.status = response.status;
+    throw failure;
+  }
+  return data;
+}
+
+function managedEntryFromResponse(entry, data) {
+  return {
+    ...entry,
+    kind: data.kind === "conversation" ? "conversation" : "document",
+    title: data.title,
+    author: data.author ?? "",
+    createdAt: data.createdAt ?? entry.createdAt,
+    updatedAt: data.updatedAt ?? Date.now(),
+    expiresAt: data.expiresAt,
+  };
+}
+
+function removeUnavailableManagedEntry(entry, error) {
+  if (error?.status !== 404 && error?.status !== 410) return;
+  removeManagedShare(entry.slug);
+  renderManagedShares();
+}
+
+function managedActionButton(label, className, handler) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = className;
+  button.textContent = label;
+  button.addEventListener("click", handler);
+  return button;
+}
+
+async function editManagedDocument(entry) {
+  try {
+    const data = await managedShareRequest(entry);
+    if (data.kind !== "document" || typeof data.content !== "string") throw new Error(t("manageLoadFailed"));
+    const currentEntry = managedEntryFromResponse(entry, data);
+    if (!upsertManagedShare(currentEntry)) throw new Error(t("managementStorageFailed"));
+    sessionStorage.setItem(MANAGED_EDIT_KEY, JSON.stringify({
+      version: 1,
+      mode: "manage",
+      entry: currentEntry,
+      title: data.title,
+      author: data.author,
+      content: data.content,
+      updatedAt: data.updatedAt ?? Date.now(),
+    }));
+    location.href = `/?editing=${encodeURIComponent(entry.slug)}`;
+  } catch (error) {
+    removeUnavailableManagedEntry(entry, error);
+    showToast(error?.message || t("manageLoadFailed"));
+  }
+}
+
+function openManagedShareSettings(entry) {
+  managedSettingsEntry = entry;
+  $("#manageTitleInput").value = entry.title;
+  $("#manageAuthorInput").value = entry.author;
+  $("#manageAuthorField").hidden = entry.kind === "conversation";
+  $("#manageTtlSelect").value = "";
+  elements.manageShareDialog.showModal();
+}
+
+async function saveManagedShareSettings() {
+  if (!managedSettingsEntry) return;
+  const entry = managedSettingsEntry;
+  const button = $("#saveManageShareButton");
+  const body = { title: $("#manageTitleInput").value };
+  if (entry.kind === "document") body.author = $("#manageAuthorInput").value;
+  if ($("#manageTtlSelect").value !== "") body.ttl = Number($("#manageTtlSelect").value);
+  button.disabled = true;
+  button.textContent = t("savingSettings");
+  try {
+    const data = await managedShareRequest(entry, { method: "PATCH", body });
+    const updated = managedEntryFromResponse(entry, data);
+    if (!upsertManagedShare(updated)) throw new Error(t("managementStorageFailed"));
+    elements.manageShareDialog.close();
+    managedSettingsEntry = null;
+    renderManagedShares();
+    showToast(t("settingsSaved"));
+  } catch (error) {
+    removeUnavailableManagedEntry(entry, error);
+    showToast(error?.message || t("manageFailed"));
+  } finally {
+    button.disabled = false;
+    button.textContent = t("saveSettings");
+  }
+}
+
+async function deleteManagedEntry(entry) {
+  if (!window.confirm(t("confirmDeleteShare", { title: entry.title || entry.slug }))) return;
+  try {
+    await managedShareRequest(entry, { method: "DELETE" });
+    removeManagedShare(entry.slug);
+    renderManagedShares();
+    showToast(t("shareDeleted"));
+  } catch (error) {
+    removeUnavailableManagedEntry(entry, error);
+    showToast(error?.message || t("manageFailed"));
+  }
+}
+
+function forgetManagedEntry(entry) {
+  if (!window.confirm(t("confirmForgetShare", { title: entry.title || entry.slug }))) return;
+  removeManagedShare(entry.slug);
+  renderManagedShares();
+  showToast(t("shareForgotten"));
+}
+
+function managedShareCard(entry) {
+  const card = document.createElement("article");
+  card.className = "managed-share-card";
+
+  const head = document.createElement("div");
+  head.className = "managed-share-card-head";
+  const identity = document.createElement("div");
+  identity.className = "managed-share-identity";
+  const kind = document.createElement("p");
+  kind.className = "managed-share-kind";
+  kind.textContent = t(entry.kind === "conversation" ? "managedConversation" : "managedDocument");
+  const title = document.createElement("h2");
+  const titleLink = document.createElement("a");
+  titleLink.href = `/${encodeURIComponent(entry.slug)}`;
+  titleLink.textContent = entry.title || entry.slug;
+  title.append(titleLink);
+  identity.append(kind, title);
+  const expiry = document.createElement("span");
+  expiry.className = "managed-share-expiry";
+  expiry.textContent = formatExpiry(entry.expiresAt);
+  head.append(identity, expiry);
+
+  const meta = document.createElement("p");
+  meta.className = "managed-share-meta";
+  meta.textContent = `/${entry.slug} · ${t("managedUpdated", { date: formatDate(entry.updatedAt) })}`;
+
+  const actions = document.createElement("div");
+  actions.className = "managed-share-actions";
+  const open = document.createElement("a");
+  open.className = "managed-share-action is-primary";
+  open.href = `/${encodeURIComponent(entry.slug)}`;
+  open.textContent = t("managedOpen");
+  actions.append(open);
+  if (entry.kind === "document") {
+    actions.append(managedActionButton(t("managedEdit"), "managed-share-action", () => editManagedDocument(entry)));
+  }
+  actions.append(
+    managedActionButton(t("managedSettings"), "managed-share-action", () => openManagedShareSettings(entry)),
+    managedActionButton(t("managedDelete"), "managed-share-action is-danger", () => deleteManagedEntry(entry)),
+    managedActionButton(t("managedForget"), "managed-share-action is-quiet", () => forgetManagedEntry(entry)),
+  );
+  card.append(head, meta, actions);
+  return card;
+}
+
+function renderManagedShares() {
+  const entries = readManagedShares();
+  elements.managedSharesList.replaceChildren(...entries.map(managedShareCard));
+  elements.managedSharesList.hidden = entries.length === 0;
+  elements.managedSharesEmpty.hidden = entries.length !== 0;
+}
+
+function loadManagedShares() {
+  hideTableOfContents();
+  document.querySelectorAll(".editor-only, .reader-only").forEach((el) => { el.hidden = true; });
+  document.querySelectorAll(".status-only").forEach((el) => { el.hidden = false; });
+  elements.editorView.hidden = true;
+  elements.readerView.hidden = true;
+  elements.conversationView.hidden = true;
+  elements.statusView.hidden = true;
+  elements.systemStatusView.hidden = true;
+  elements.agentSetupView.hidden = true;
+  elements.managedSharesView.hidden = false;
+  document.title = t("managedPageTitle");
+  renderManagedShares();
+}
+
 function agentInstallPath() {
   return agentDirectories[selectedAgent][selectedAgentScope];
 }
@@ -1114,10 +1670,30 @@ function loadAgentSetup() {
   updateAgentInstaller();
 }
 
+function forkDocument(data) {
+  try {
+    sessionStorage.setItem(FORK_DRAFT_KEY, JSON.stringify({
+      version: 1,
+      mode: "fork",
+      title: t("forkedTitle", { title: data.title }),
+      author: "",
+      content: data.content,
+      ttl: "604800",
+      slug: "",
+      updatedAt: Date.now(),
+    }));
+    location.href = "/?fork=1";
+  } catch {
+    showToast(t("manageLoadFailed"));
+  }
+}
+
 async function loadShare(slug) {
   document.querySelectorAll(".editor-only").forEach((el) => { el.hidden = true; });
   document.querySelectorAll(".reader-only").forEach((el) => { el.hidden = false; });
   elements.editorView.hidden = true;
+  elements.forkDocumentButton.hidden = true;
+  elements.forkDocumentButton.onclick = null;
 
   try {
     const response = await fetch(`/api/shares/${encodeURIComponent(slug)}`);
@@ -1137,6 +1713,7 @@ async function loadShare(slug) {
       renderConversation(data);
       await enhanceRenderedMarkdown(elements.conversationFeed);
       elements.conversationView.hidden = false;
+      requestAnimationFrame(() => navigateToConversationHash());
       return;
     }
     $("#readerTitle").textContent = data.title;
@@ -1147,6 +1724,8 @@ async function loadShare(slug) {
     $("#expiryLabel").textContent = formatExpiry(data.expiresAt);
     $("#rawLink").href = `/api/docs/${encodeURIComponent(slug)}/raw`;
     $("#rawLink").textContent = "Markdown";
+    elements.forkDocumentButton.hidden = false;
+    elements.forkDocumentButton.onclick = () => forkDocument(data);
     elements.readerView.hidden = false;
   } catch {
     hideTableOfContents();
@@ -1259,7 +1838,20 @@ $("#publishForm").addEventListener("submit", (event) => {
 });
 $("#copyLinkButton").addEventListener("click", () => copyText(location.href));
 $("#copySuccessLink").addEventListener("click", () => copyText($("#shareUrlInput").value));
+$("#copyManageTokenButton").addEventListener("click", async () => {
+  if (!currentManageToken) return;
+  await navigator.clipboard.writeText(currentManageToken);
+  showToast(t("managementTokenCopied"));
+});
 $("#continueEditingButton").addEventListener("click", () => elements.successDialog.close());
+$("#closeManageShareDialog").addEventListener("click", () => {
+  managedSettingsEntry = null;
+  elements.manageShareDialog.close();
+});
+$("#manageShareForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  saveManagedShareSettings();
+});
 document.querySelectorAll("[data-language-toggle]").forEach((button) => {
   button.addEventListener("click", () => {
     if (!elements.editorView.hidden) saveDraft();
@@ -1270,6 +1862,22 @@ document.querySelectorAll("[data-language-toggle]").forEach((button) => {
 elements.tocToggle.addEventListener("click", () => {
   setTocCollapsed(!elements.tocPanel.classList.contains("is-collapsed"), { persist: true });
 });
+elements.conversationSearch.addEventListener("input", () => {
+  clearTimeout(conversationSearchTimer);
+  conversationSearchTimer = setTimeout(() => applyConversationSearch(), 100);
+});
+elements.conversationSearch.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || !elements.conversationSearch.value) return;
+  event.preventDefault();
+  clearConversationSearch({ focus: true });
+});
+elements.conversationSearchClear.addEventListener("click", () => clearConversationSearch({ focus: true }));
+$("#conversationNoResultsClear").addEventListener("click", () => clearConversationSearch({ focus: true }));
+elements.conversationAnswerToggle.addEventListener("click", () => {
+  setConversationAnswerOnly(!conversationAnswerOnly);
+});
+elements.conversationDisclosureToggle.addEventListener("click", toggleAllConversationDisclosures);
+window.addEventListener("hashchange", navigateToConversationHash);
 
 elements.markdownInput.addEventListener("input", () => {
   currentMarkdown = elements.markdownInput.value;
@@ -1326,5 +1934,6 @@ $("#slugPrefix").textContent = `${location.host}/`;
 const slug = decodeURIComponent(location.pathname.slice(1)).replace(/\/$/, "");
 if (slug === "status") loadSystemStatus();
 else if (slug === "agents") loadAgentSetup();
+else if (slug === "mine") loadManagedShares();
 else if (slug) loadShare(slug);
 else initializeVisualEditor();

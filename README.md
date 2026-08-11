@@ -10,8 +10,10 @@ Notelet is a minimal, Telegra.ph-inspired service for sharing Markdown documents
 - Headings, lists, tasks, quotes, code blocks, tables, and pasted images
 - Syntax highlighting for common programming languages and Mermaid diagrams
 - Collapsible table of contents while editing and reading
-- Structured Codex conversation pages with per-turn Markdown and image support
+- Structured Codex conversation pages with search, stable turn links, answer-only mode, per-turn Markdown, and image support
 - Random or custom short links with configurable TTL
+- Browser-local “My Notelets” management for editing, extending, revoking, and duplicating shares
+- Share-specific Open Graph and Twitter metadata for rich link previews
 - Raw Markdown or conversation JSON downloads
 - Anonymous publishing protected by Cloudflare rate limiting
 - Safe Markdown rendering with raw HTML disabled
@@ -96,6 +98,9 @@ npm run deploy    # build and deploy with Wrangler
 | `POST /api/conversations` | Publish a structured conversation |
 | `GET /api/conversations/:slug` | Retrieve a conversation |
 | `GET /api/conversations/:slug/raw` | Download conversation JSON |
+| `GET /api/shares/:slug` | Retrieve a public share, or its editable source with Bearer management authorization |
+| `PATCH /api/shares/:slug` | Update content, metadata, or expiry with a management token |
+| `DELETE /api/shares/:slug` | Revoke a share with a management token |
 | `POST /api/images` | Upload an image |
 | `GET /i/:key` | Retrieve an image from R2 |
 | `POST /api/preview` | Render a safe Markdown preview |
@@ -113,6 +118,8 @@ flowchart LR
 The status page always counts documents, conversations, R2 objects, and R2 bytes directly. To display Workers, KV, and R2 operation usage, configure `CLOUDFLARE_ACCOUNT_ID` and the secret `CLOUDFLARE_ANALYTICS_TOKEN` with read-only Account Analytics permission. Never commit the token.
 
 Expired shares return `410 Gone`. The Worker checks `expiresAt` on every read, while KV expiration and a daily R2 cleanup job perform eventual physical deletion.
+
+Publishing returns a one-time management token. The browser stores it locally for `/mine`; the Worker stores only its SHA-256 digest. Keep token backups private: public links, raw exports, and share-preview metadata never include management credentials.
 
 ## Privacy and security
 

@@ -39,6 +39,13 @@ describe("Notelet Agent Skill", () => {
     expect(NOTELET_SKILL_MARKDOWN).toContain("do not retry automatically");
   });
 
+  it("treats the one-time management token as a private credential", () => {
+    expect(NOTELET_SKILL_MARKDOWN).toContain("one-time `manageToken`");
+    expect(NOTELET_SKILL_MARKDOWN).toContain("Authorization: Bearer <manageToken>");
+    expect(NOTELET_SKILL_MARKDOWN).toContain("never put it in the public share URL");
+    expect(NOTELET_SKILL_MARKDOWN).toContain("cannot recover it later");
+  });
+
   it("serves SKILL.md as a same-origin, non-indexed download", async () => {
     const response = await worker.fetch(
       new Request("https://notelet.youcaidi.link/skills/notelet-publish/SKILL.md"),

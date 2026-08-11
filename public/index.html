@@ -50,6 +50,11 @@
               <span data-menu-label="status">状态</span>
               <ph-caret-right class="utility-menu-trailing" size="13" aria-hidden="true"></ph-caret-right>
             </a>
+            <a class="utility-menu-item" href="/mine" role="menuitem">
+              <ph-archive class="utility-menu-icon" size="17" aria-hidden="true"></ph-archive>
+              <span data-menu-label="mine">我的短笺</span>
+              <ph-caret-right class="utility-menu-trailing" size="13" aria-hidden="true"></ph-caret-right>
+            </a>
             <a class="utility-menu-item" href="/agents" role="menuitem">
               <ph-plugs-connected class="utility-menu-icon" size="17" aria-hidden="true"></ph-plugs-connected>
               <span data-menu-label="agents">Agent 接入</span>
@@ -59,6 +64,7 @@
         </div>
       </div>
       <div class="topbar-actions reader-only" hidden>
+        <button class="quiet-button" id="forkDocumentButton" type="button" hidden>复制为新短笺</button>
         <button class="quiet-button" id="copyLinkButton" type="button">复制链接</button>
         <a class="quiet-button as-link" id="rawLink" href="#">Markdown</a>
         <div class="utility-menu" data-utility-menu>
@@ -74,6 +80,11 @@
             <a class="utility-menu-item" href="/status" role="menuitem">
               <ph-pulse class="utility-menu-icon" size="17" aria-hidden="true"></ph-pulse>
               <span data-menu-label="status">状态</span>
+              <ph-caret-right class="utility-menu-trailing" size="13" aria-hidden="true"></ph-caret-right>
+            </a>
+            <a class="utility-menu-item" href="/mine" role="menuitem">
+              <ph-archive class="utility-menu-icon" size="17" aria-hidden="true"></ph-archive>
+              <span data-menu-label="mine">我的短笺</span>
               <ph-caret-right class="utility-menu-trailing" size="13" aria-hidden="true"></ph-caret-right>
             </a>
             <a class="utility-menu-item" href="/agents" role="menuitem">
@@ -96,6 +107,11 @@
               <span data-menu-label="language">语言</span>
               <span class="utility-menu-value" data-language-target>English</span>
             </button>
+            <a class="utility-menu-item" href="/mine" role="menuitem">
+              <ph-archive class="utility-menu-icon" size="17" aria-hidden="true"></ph-archive>
+              <span data-menu-label="mine">我的短笺</span>
+              <ph-caret-right class="utility-menu-trailing" size="13" aria-hidden="true"></ph-caret-right>
+            </a>
             <a class="utility-menu-item" href="/agents" role="menuitem">
               <ph-plugs-connected class="utility-menu-icon" size="17" aria-hidden="true"></ph-plugs-connected>
               <span data-menu-label="agents">Agent 接入</span>
@@ -180,6 +196,30 @@
           <h1 class="reader-title" id="conversationTitle"></h1>
           <div class="reader-meta" id="conversationMeta"></div>
         </header>
+        <section class="conversation-controls" aria-label="会话阅读工具">
+          <label class="conversation-search-label" for="conversationSearch">搜索会话</label>
+          <div class="conversation-control-row">
+            <div class="conversation-search-field">
+              <input
+                id="conversationSearch"
+                type="search"
+                placeholder="搜索提问、回答与执行过程"
+                aria-describedby="conversationSearchStatus"
+                autocomplete="off"
+              />
+              <button id="conversationSearchClear" type="button" hidden>清除</button>
+            </div>
+            <div class="conversation-view-actions">
+              <button id="conversationAnswerToggle" type="button" aria-pressed="false">只看最终回答</button>
+              <button id="conversationDisclosureToggle" type="button" aria-expanded="false">展开过程</button>
+            </div>
+          </div>
+          <p class="conversation-search-status" id="conversationSearchStatus" aria-live="polite"></p>
+        </section>
+        <div class="conversation-no-results" id="conversationNoResults" hidden>
+          <p id="conversationNoResultsText">没有找到匹配内容。</p>
+          <button id="conversationNoResultsClear" type="button">清除搜索</button>
+        </div>
         <div class="conversation-feed" id="conversationFeed"></div>
         <footer class="reader-footer">
           <span id="conversationExpiry"></span>
@@ -222,6 +262,20 @@
         </section>
         <p class="status-notice" id="statusNotice" hidden></p>
         <p class="status-footnote" id="statusFootnote">免费额度以 Cloudflare 官方公开标准为准；Workers 请求量显示本项目用量，账户级额度可能由同账户的其他 Worker 共享。</p>
+      </section>
+
+      <section class="managed-shares" id="managedSharesView" hidden aria-labelledby="managedSharesTitle">
+        <header class="managed-shares-head">
+          <p class="eyebrow" id="managedSharesEyebrow">本地管理</p>
+          <h1 id="managedSharesTitle">我的短笺</h1>
+          <p id="managedSharesDescription">这里显示由当前浏览器发布并保存管理权限的短笺。管理密钥只保存在本机，不会出现在公开链接中。</p>
+        </header>
+        <div class="managed-shares-list" id="managedSharesList"></div>
+        <div class="managed-shares-empty" id="managedSharesEmpty" hidden>
+          <h2 id="managedSharesEmptyTitle">还没有可管理的短笺</h2>
+          <p id="managedSharesEmptyHelp">从这个浏览器发布新短笺后，可以在这里修改、延期或撤回。</p>
+          <a class="publish-button as-link" id="managedSharesCreateLink" href="/">新建短笺</a>
+        </div>
       </section>
 
       <section class="agent-setup" id="agentSetupView" hidden aria-labelledby="agentSetupTitle">
@@ -293,22 +347,24 @@
           <button class="icon-button" id="closePublishDialog" aria-label="关闭" type="button">×</button>
         </div>
 
-        <label class="field-label" for="ttlSelect">链接有效期</label>
-        <select id="ttlSelect">
-          <option value="3600">1 小时</option>
-          <option value="86400">1 天</option>
-          <option value="604800" selected>7 天</option>
-          <option value="2592000">30 天</option>
-          <option value="31536000">1 年</option>
-          <option value="0">永不过期</option>
-        </select>
+        <div id="publishCreateFields">
+          <label class="field-label" for="ttlSelect">链接有效期</label>
+          <select id="ttlSelect">
+            <option value="3600">1 小时</option>
+            <option value="86400">1 天</option>
+            <option value="604800" selected>7 天</option>
+            <option value="2592000">30 天</option>
+            <option value="31536000">1 年</option>
+            <option value="0">永不过期</option>
+          </select>
 
-        <label class="field-label" for="slugInput"><span id="slugLabelText">自定义短链</span> <span id="slugOptional">可选</span></label>
-        <div class="slug-field">
-          <span id="slugPrefix">/</span>
-          <input id="slugInput" type="text" maxlength="40" placeholder="project-notes" autocomplete="off" />
+          <label class="field-label" for="slugInput"><span id="slugLabelText">自定义短链</span> <span id="slugOptional">可选</span></label>
+          <div class="slug-field">
+            <span id="slugPrefix">/</span>
+            <input id="slugInput" type="text" maxlength="40" placeholder="project-notes" autocomplete="off" />
+          </div>
+          <p class="field-help">留空会生成 8 位随机短链。仅限小写字母、数字和连字符。</p>
         </div>
-        <p class="field-help">留空会生成 8 位随机短链。仅限小写字母、数字和连字符。</p>
 
         <button class="confirm-publish-button" id="confirmPublishButton" type="submit">确认发布</button>
       </form>
@@ -322,10 +378,43 @@
         <input id="shareUrlInput" readonly aria-label="分享链接" />
         <button id="copySuccessLink" type="button">复制</button>
       </div>
+      <p class="success-management-note" id="successManagementNote">管理权限已保存在这个浏览器中，可随时修改、延期或撤回。</p>
+      <button class="management-token-copy" id="copyManageTokenButton" type="button">备份私有管理密钥</button>
       <div class="success-actions">
         <button class="quiet-button" id="continueEditingButton" type="button">继续编辑</button>
         <a class="publish-button as-link" id="openDocumentLink" href="#">打开文档</a>
       </div>
+      <a class="success-manage-link" id="successManageLink" href="/mine">前往我的短笺</a>
+    </dialog>
+
+    <dialog class="manage-share-dialog" id="manageShareDialog">
+      <form id="manageShareForm">
+        <div class="dialog-head">
+          <div>
+            <p class="eyebrow" id="manageShareEyebrow">分享设置</p>
+            <h2 id="manageShareTitle">管理短笺</h2>
+            <p class="dialog-description" id="manageShareDescription">修改标题、作者或重新设置有效期。</p>
+          </div>
+          <button class="icon-button" id="closeManageShareDialog" aria-label="关闭" type="button">×</button>
+        </div>
+        <label class="field-label" id="manageTitleLabel" for="manageTitleInput">标题</label>
+        <input id="manageTitleInput" type="text" maxlength="160" autocomplete="off" />
+        <div id="manageAuthorField">
+          <label class="field-label" id="manageAuthorLabel" for="manageAuthorInput">作者</label>
+          <input id="manageAuthorInput" type="text" maxlength="80" autocomplete="off" />
+        </div>
+        <label class="field-label" id="manageExpiryLabel" for="manageTtlSelect">重新设置有效期</label>
+        <select id="manageTtlSelect">
+          <option value="" selected>保持当前有效期</option>
+          <option value="3600">从现在起 1 小时</option>
+          <option value="86400">从现在起 1 天</option>
+          <option value="604800">从现在起 7 天</option>
+          <option value="2592000">从现在起 30 天</option>
+          <option value="31536000">从现在起 1 年</option>
+          <option value="0">永不过期</option>
+        </select>
+        <button class="confirm-publish-button" id="saveManageShareButton" type="submit">保存设置</button>
+      </form>
     </dialog>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>

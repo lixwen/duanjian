@@ -105,7 +105,9 @@ curl --fail-with-body --silent --show-error \\
   --data '{"title":"Example","content":"# Example\\n\\nPublished with Notelet.","ttl":604800}'
 \`\`\`
 
-Both publish endpoints return status \`201\` with \`url\`, \`slug\`, and \`expiresAt\`.
+Both publish endpoints return status \`201\` with \`url\`, \`slug\`, \`expiresAt\`, and a one-time \`manageToken\`. Treat \`manageToken\` as a private credential: never put it in the public share URL, published content, logs, or a message intended for anyone other than the requesting user. Notelet stores only its hash and cannot recover it later.
+
+The requesting user can use that token as \`Authorization: Bearer <manageToken>\` with \`GET\`, \`PATCH\`, or \`DELETE https://notelet.youcaidi.link/api/shares/<slug>\` to inspect, update, extend, or revoke the share. Do not perform those operations unless the user explicitly requests them.
 
 ## Common workflow
 
@@ -118,5 +120,5 @@ Both publish endpoints return status \`201\` with \`url\`, \`slug\`, and \`expir
 7. On status \`429\`, report the rate limit and do not retry automatically.
 8. On status \`409\`, explain that the custom slug is already taken and ask whether to retry without it or with another slug.
 9. For any other error, report the API message and do not invent a link.
-10. On success, return the \`url\` and state when it expires. If \`expiresAt\` is null, say that it does not automatically expire.
+10. On success, return the public \`url\` and state when it expires. If \`expiresAt\` is null, say that it does not automatically expire. Mention that a private management credential was issued, but reveal \`manageToken\` only when the requesting user asks for it or needs a requested management operation.
 `;

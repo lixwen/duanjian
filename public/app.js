@@ -61,6 +61,12 @@ const elements = {
   publishDialog: $("#publishDialog"),
   successDialog: $("#successDialog"),
   manageShareDialog: $("#manageShareDialog"),
+  diagramViewer: $("#diagramViewer"),
+  diagramViewerCanvas: $("#diagramViewerCanvas"),
+  diagramViewerImage: $("#diagramViewerImage"),
+  diagramZoomOutButton: $("#diagramZoomOutButton"),
+  diagramActualSizeButton: $("#diagramActualSizeButton"),
+  diagramZoomInButton: $("#diagramZoomInButton"),
   publishButton: $("#publishButton"),
   confirmPublishButton: $("#confirmPublishButton"),
   ttlSelect: $("#ttlSelect"),
@@ -94,6 +100,12 @@ let mermaidRendererPromise;
 let mermaidRendererFrame;
 let mermaidRequestId = 0;
 const mermaidRequests = new Map();
+const DIAGRAM_MIN_ZOOM = 0.1;
+const DIAGRAM_MAX_ZOOM = 4;
+const DIAGRAM_ZOOM_STEP = 0.25;
+let diagramViewerNaturalWidth = 0;
+let diagramViewerNaturalHeight = 0;
+let diagramViewerZoom = 1;
 const AGENT_SKILL_URL = "/skills/notelet-publish/SKILL.md";
 const AGENT_SKILL_NAME = "notelet-publish";
 const AGENT_SKILL_FILES = [
@@ -740,7 +752,72 @@ async function renderMermaidSvg(source) {
   });
 }
 
-async function createMermaidDiagram(source) {
+function centerDiagramViewer() {
+  const canvas = elements.diagramViewerCanvas;
+  canvas.scrollLeft = Math.max(0, (canvas.scrollWidth - canvas.clientWidth) / 2);
+  canvas.scrollTop = Math.max(0, (canvas.scrollHeight - canvas.clientHeight) / 2);
+}
+
+function setDiagramViewerZoom(nextZoom, { center = false } = {}) {
+  const canvas = elements.diagramViewerCanvas;
+  const previousWidth = canvas.scrollWidth || 1;
+  const previousHeight = canvas.scrollHeight || 1;
+  const centerX = (canvas.scrollLeft + canvas.clientWidth / 2) / previousWidth;
+  const centerY = (canvas.scrollTop + canvas.clientHeight / 2) / previousHeight;
+  diagramViewerZoom = Math.min(DIAGRAM_MAX_ZOOM, Math.max(DIAGRAM_MIN_ZOOM, nextZoom));
+
+  if (diagramViewerNaturalWidth) {
+    elements.diagramViewerImage.width = Math.round(diagramViewerNaturalWidth * diagramViewerZoom);
+  }
+  elements.diagramActualSizeButton.textContent = t("diagramZoomLevel", {
+    percent: Math.round(diagramViewerZoom * 100),
+  });
+  elements.diagramZoomOutButton.disabled = diagramViewerZoom <= DIAGRAM_MIN_ZOOM;
+  elements.diagramZoomInButton.disabled = diagramViewerZoom >= DIAGRAM_MAX_ZOOM;
+
+  requestAnimationFrame(() => {
+    if (center) {
+      centerDiagramViewer();
+      return;
+    }
+    canvas.scrollLeft = centerX * canvas.scrollWidth - canvas.clientWidth / 2;
+    canvas.scrollTop = centerY * canvas.scrollHeight - canvas.clientHeight / 2;
+  });
+}
+
+function fitDiagramViewer() {
+  if (!diagramViewerNaturalWidth || !diagramViewerNaturalHeight) return;
+  const canvas = elements.diagramViewerCanvas;
+  const horizontalPadding = 64;
+  const verticalPadding = 64;
+  const fit = Math.min(
+    (canvas.clientWidth - horizontalPadding) / diagramViewerNaturalWidth,
+    (canvas.clientHeight - verticalPadding) / diagramViewerNaturalHeight,
+  );
+  setDiagramViewerZoom(fit, { center: true });
+}
+
+function openDiagramViewer(sourceImage) {
+  const viewerImage = elements.diagramViewerImage;
+  diagramViewerNaturalWidth = sourceImage.naturalWidth || 0;
+  diagramViewerNaturalHeight = sourceImage.naturalHeight || 0;
+  viewerImage.removeAttribute("width");
+  viewerImage.src = sourceImage.src;
+  viewerImage.alt = sourceImage.alt;
+  diagramViewerZoom = 1;
+  setDiagramViewerZoom(1, { center: true });
+  if (!elements.diagramViewer.open) elements.diagramViewer.showModal();
+
+  const useNaturalSize = () => {
+    diagramViewerNaturalWidth = viewerImage.naturalWidth;
+    diagramViewerNaturalHeight = viewerImage.naturalHeight;
+    setDiagramViewerZoom(1, { center: true });
+  };
+  if (viewerImage.complete && viewerImage.naturalWidth) useNaturalSize();
+  else viewerImage.addEventListener("load", useNaturalSize, { once: true });
+}
+
+async function createMermaidDiagram(source, { expandable = false } = {}) {
   const svg = await renderMermaidSvg(source);
   const diagram = document.createElement("div");
   diagram.className = "mermaid-diagram";
@@ -748,6 +825,16 @@ async function createMermaidDiagram(source) {
   image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   image.alt = t("diagram");
   diagram.append(image);
+  if (expandable) {
+    diagram.classList.add("is-expandable");
+    const expandButton = document.createElement("button");
+    expandButton.className = "diagram-expand-button";
+    expandButton.type = "button";
+    expandButton.textContent = t("openDiagramViewer");
+    expandButton.addEventListener("click", () => openDiagramViewer(image));
+    image.addEventListener("click", () => openDiagramViewer(image));
+    diagram.append(expandButton);
+  }
   return diagram;
 }
 
@@ -844,7 +931,7 @@ async function enhanceRenderedMarkdown(root) {
     const placeholder = document.createElement("div");
     code.parentElement.replaceWith(placeholder);
     try {
-      placeholder.replaceWith(await createMermaidDiagram(source));
+      placeholder.replaceWith(await createMermaidDiagram(source, { expandable: true }));
     } catch (error) {
       console.error(error);
       placeholder.replaceWith(createDiagramError(source));
@@ -1837,6 +1924,40 @@ document.addEventListener("keydown", (event) => {
   const openMenu = [...document.querySelectorAll("[data-utility-menu]")]
     .find((menu) => !menu.querySelector(".utility-menu-popover").hidden);
   if (openMenu) closeUtilityMenu(openMenu, true);
+});
+
+$("#closeDiagramViewer").addEventListener("click", () => elements.diagramViewer.close());
+$("#diagramFitButton").addEventListener("click", fitDiagramViewer);
+elements.diagramZoomOutButton.addEventListener("click", () => {
+  setDiagramViewerZoom(diagramViewerZoom - DIAGRAM_ZOOM_STEP);
+});
+elements.diagramActualSizeButton.addEventListener("click", () => {
+  setDiagramViewerZoom(1, { center: true });
+});
+elements.diagramZoomInButton.addEventListener("click", () => {
+  setDiagramViewerZoom(diagramViewerZoom + DIAGRAM_ZOOM_STEP);
+});
+elements.diagramViewer.addEventListener("click", (event) => {
+  if (event.target === elements.diagramViewer) elements.diagramViewer.close();
+});
+elements.diagramViewer.addEventListener("keydown", (event) => {
+  if (event.key === "+" || event.key === "=") {
+    event.preventDefault();
+    setDiagramViewerZoom(diagramViewerZoom + DIAGRAM_ZOOM_STEP);
+  } else if (event.key === "-") {
+    event.preventDefault();
+    setDiagramViewerZoom(diagramViewerZoom - DIAGRAM_ZOOM_STEP);
+  } else if (event.key === "0") {
+    event.preventDefault();
+    setDiagramViewerZoom(1, { center: true });
+  } else if (event.key.toLowerCase() === "f") {
+    event.preventDefault();
+    fitDiagramViewer();
+  }
+});
+elements.diagramViewer.addEventListener("close", () => {
+  elements.diagramViewerImage.removeAttribute("src");
+  elements.diagramViewerImage.removeAttribute("width");
 });
 
 elements.publishButton.addEventListener("click", openPublishDialog);

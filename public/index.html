@@ -419,6 +419,32 @@
       </form>
     </dialog>
 
+    <dialog class="diagram-viewer" id="diagramViewer" aria-labelledby="diagramViewerTitle" aria-describedby="diagramViewerHint">
+      <div class="diagram-viewer-shell">
+        <header class="diagram-viewer-header">
+          <div class="diagram-viewer-heading">
+            <p class="eyebrow" id="diagramViewerEyebrow">图表查看器</p>
+            <h2 id="diagramViewerTitle">流程图详情</h2>
+          </div>
+          <div class="diagram-viewer-actions">
+            <div class="diagram-zoom-controls" role="group" aria-label="缩放控制">
+              <button id="diagramFitButton" type="button">适合窗口</button>
+              <button id="diagramZoomOutButton" type="button" aria-label="缩小">−</button>
+              <button id="diagramActualSizeButton" type="button" aria-label="恢复 100%">100%</button>
+              <button id="diagramZoomInButton" type="button" aria-label="放大">+</button>
+            </div>
+            <button class="diagram-viewer-close" id="closeDiagramViewer" type="button" aria-label="关闭">×</button>
+          </div>
+        </header>
+        <div class="diagram-viewer-canvas" id="diagramViewerCanvas" tabindex="0" aria-label="可滚动的流程图">
+          <div class="diagram-viewer-stage">
+            <img class="diagram-viewer-image" id="diagramViewerImage" alt="流程图" />
+          </div>
+        </div>
+        <p class="diagram-viewer-hint" id="diagramViewerHint">滚动查看细节，也可使用 +、−、0 和 F 快捷键。</p>
+      </div>
+    </dialog>
+
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
   </body>
 </html>

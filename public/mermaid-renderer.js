@@ -16,6 +16,11 @@ function normalizeSvgForImage(svg) {
   const document = new DOMParser().parseFromString(svg, "text/html");
   const element = document.querySelector("svg");
   if (!element) throw new Error("Mermaid did not return an SVG");
+  const viewBox = element.getAttribute("viewBox")?.trim().split(/[\s,]+/).map(Number);
+  if (viewBox?.length === 4 && viewBox.every(Number.isFinite) && viewBox[2] > 0 && viewBox[3] > 0) {
+    element.setAttribute("width", String(viewBox[2]));
+    element.setAttribute("height", String(viewBox[3]));
+  }
   return new XMLSerializer().serializeToString(element);
 }
 

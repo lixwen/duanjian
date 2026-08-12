@@ -24,4 +24,14 @@ describe("Mermaid editing preview", () => {
     expect(styles).toContain(".visual-editor .milkdown .ProseMirror h1 { font-size: 1.8em; }");
     expect(styles).toContain(".list-item:has(> .children > [data-content-dom] > p:first-child) > .label-wrapper");
   });
+
+  it("lets readers enlarge and zoom rendered diagrams", () => {
+    expect(app).toContain('createMermaidDiagram(source, { expandable: true })');
+    expect(app).toContain('expandButton.textContent = t("openDiagramViewer")');
+    expect(app).toContain("elements.diagramViewer.showModal()");
+    expect(app).toContain('event.key.toLowerCase() === "f"');
+    expect(renderer).toContain('element.setAttribute("width", String(viewBox[2]))');
+    expect(styles).toContain(".diagram-viewer-canvas");
+    expect(styles).toContain(".diagram-expand-button");
+  });
 });
